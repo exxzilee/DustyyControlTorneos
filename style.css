@@ -164,6 +164,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{font-family:var(--mono);font-size:.85rem;color:var(--text2);letter-spacing:.1em}
 
+/* ── GUEST / SPECTATOR MODE ── */
+body.guest-mode .admin-only{display:none!important}
+body.guest-mode .b-match.clickable{pointer-events:none;cursor:default}
+body.guest-mode .b-match.clickable:hover{border-color:var(--border)}
+body.guest-mode .rep-match.clickable{pointer-events:none;cursor:default}
+body.guest-mode .rep-match.clickable:hover{border-color:rgba(191,90,242,.25)}
+.guest-banner{background:rgba(10,132,255,.1);border:1px solid rgba(10,132,255,.3);border-radius:6px;padding:.6rem 1.2rem;font-family:var(--mono);font-size:.75rem;color:var(--blue);text-align:center;margin:0 2rem;letter-spacing:.05em}
+.btn-guest{background:transparent;color:var(--blue);border:1px solid rgba(10,132,255,.4);width:100%;justify-content:center;margin-top:.5rem}
+.btn-guest:hover{background:rgba(10,132,255,.1);border-color:var(--blue)}
+
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}

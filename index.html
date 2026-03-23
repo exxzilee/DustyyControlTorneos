@@ -35,9 +35,11 @@
   </nav>
   <div class="header-right">
     <div class="user-badge"><span class="dot"></span> <span id="user-email">—</span></div>
-    <button class="btn-logout" onclick="logout()">CERRAR SESIÓN</button>
+    <button class="btn-logout" id="btn-logout" onclick="logout()">CERRAR SESIÓN</button>
   </div>
 </header>
+
+<div class="guest-banner" id="guest-banner" style="display:none;">👁 MODO ESPECTADOR — Solo lectura. Para administrar, iniciá sesión.</div>
 
 <!-- ══════════════════════ PILOTOS ══ -->
 <section id="jugadores" class="active">
@@ -46,7 +48,7 @@
       <div class="s-title">PILOTOS REGISTRADOS</div>
       <div style="display:flex;gap:.7rem;align-items:center;">
         <input id="searchPiloto" class="btn btn-ghost" type="text" placeholder="🔍  Buscar…" style="width:200px;font-family:var(--body);font-size:.9rem;" oninput="renderJugadores()">
-        <button class="btn btn-primary" onclick="openAddPiloto()">+ AGREGAR PILOTO</button>
+        <button class="btn btn-primary admin-only" onclick="openAddPiloto()">+ AGREGAR PILOTO</button>
       </div>
     </div>
     <details style="margin-bottom:1.5rem;">
@@ -76,7 +78,7 @@
     <div id="torneos-list-view">
       <div class="s-head">
         <div class="s-title">TORNEOS</div>
-        <button class="btn btn-primary" onclick="openAddTorneo()">+ NUEVO TORNEO</button>
+        <button class="btn btn-primary admin-only" onclick="openAddTorneo()">+ NUEVO TORNEO</button>
       </div>
       <div id="torneos-grid"></div>
     </div>
@@ -93,7 +95,7 @@
     <div id="llaves-list-view">
       <div class="s-head">
         <div class="s-title">LLAVES</div>
-        <button class="btn btn-purple" onclick="openAddLlave()">+ NUEVA LLAVE</button>
+        <button class="btn btn-purple admin-only" onclick="openAddLlave()">+ NUEVA LLAVE</button>
       </div>
       <div id="llaves-grid"></div>
     </div>

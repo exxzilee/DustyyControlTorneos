@@ -26,6 +26,7 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 
 // ═════════════════════════════ AUTH ══════════════════════════════
 let _authMode = 'login'; // 'login' | 'register'
+let _isGuest = false;
 
 function toggleAuthMode() {
   _authMode = _authMode === 'login' ? 'register' : 'login';
@@ -54,10 +55,9 @@ function renderAuthScreen() {
         </button>
       </div>
       <div class="auth-error" id="auth-error"></div>
-      <div class="auth-toggle">
-        ${isLogin
-          ? '¿No tenés cuenta? <a onclick="toggleAuthMode()">Registrate</a>'
-          : '¿Ya tenés cuenta? <a onclick="toggleAuthMode()">Iniciá sesión</a>'}
+      <div style="margin-top:1.2rem;border-top:1px solid var(--border);padding-top:1.2rem;">
+        <button class="btn btn-guest" onclick="enterGuestMode()">👁 ENTRAR COMO ESPECTADOR</button>
+        <div style="text-align:center;font-family:var(--mono);font-size:.65rem;color:var(--text3);margin-top:.5rem;">Solo lectura — sin necesidad de cuenta</div>
       </div>
     </div>`;
   // Focus email field
@@ -94,7 +94,31 @@ function doAuth() {
 }
 
 function logout() {
+  if (_isGuest) {
+    _isGuest = false;
+    document.body.classList.remove('guest-mode');
+    document.getElementById('guest-banner').style.display = 'none';
+    document.getElementById('app-wrapper').style.display = 'none';
+    document.getElementById('auth-screen').style.display = '';
+    stopRealtimeSync();
+    _dataLoaded = false;
+    _cache = { jugadores: [], torneos: [], llaves: [] };
+    renderAuthScreen();
+    return;
+  }
   auth.signOut();
+}
+
+function enterGuestMode() {
+  _isGuest = true;
+  document.body.classList.add('guest-mode');
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-wrapper').style.display = 'block';
+  document.getElementById('user-email').textContent = 'ESPECTADOR';
+  document.getElementById('btn-logout').textContent = 'INICIAR SESIÓN';
+  document.getElementById('guest-banner').style.display = 'block';
+  showLoading();
+  startRealtimeSync();
 }
 
 function showLoading() {
@@ -111,10 +135,15 @@ auth.onAuthStateChanged(user => {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app-wrapper').style.display = 'block';
     document.getElementById('user-email').textContent = user.email;
+    document.getElementById('btn-logout').textContent = 'CERRAR SESIÓN';
+    document.getElementById('guest-banner').style.display = 'none';
+    document.body.classList.remove('guest-mode');
+    _isGuest = false;
     showLoading();
     startRealtimeSync();
   } else {
-    // Logged out
+    // Logged out — but don't interrupt guest mode
+    if (_isGuest) return;
     document.getElementById('auth-screen').style.display = '';
     document.getElementById('app-wrapper').style.display = 'none';
     stopRealtimeSync();
@@ -230,10 +259,10 @@ function renderJugadores() {
   );
   const el = document.getElementById('jugadores-table');
   if (!filtered.length) {
-    el.innerHTML = `<div class="empty"><div class="e-icon">🏎</div><p>${jugadores.length ? 'Sin resultados.' : 'Aún no hay pilotos.'}</p><button class="btn btn-primary" onclick="openAddPiloto()">+ AGREGAR EL PRIMER PILOTO</button></div>`;
+    el.innerHTML = `<div class="empty"><div class="e-icon">🏎</div><p>${jugadores.length ? 'Sin resultados.' : 'Aún no hay pilotos.'}</p>${!_isGuest ? '<button class="btn btn-primary" onclick="openAddPiloto()">+ AGREGAR EL PRIMER PILOTO</button>' : ''}</div>`;
     return;
   }
-  el.innerHTML = `<table><thead><tr><th>#</th><th>USERNAME</th><th>VEHÍCULO</th><th>CLASE</th><th>MEJOR TIEMPO</th><th>V</th><th>D</th><th>TORNEOS</th><th>ACCIONES</th></tr></thead>
+  el.innerHTML = `<table><thead><tr><th>#</th><th>USERNAME</th><th>VEHÍCULO</th><th>CLASE</th><th>MEJOR TIEMPO</th><th>V</th><th>D</th><th>TORNEOS</th>${!_isGuest ? '<th>ACCIONES</th>' : ''}</tr></thead>
   <tbody>${filtered.map((j, i) => {
     const tope = TOPES[j.clase]?.tope;
     const isFast = tope !== null && j.mejorTiempo != null && j.mejorTiempo < tope;
@@ -244,8 +273,8 @@ function renderJugadores() {
     <td style="color:var(--green);font-family:var(--mono);">${j.victorias || 0}</td>
     <td style="color:var(--red);font-family:var(--mono);">${j.derrotas || 0}</td>
     <td style="font-family:var(--mono);">${j.torneos || 0}</td>
-    <td><button class="btn btn-ghost btn-sm" onclick="openEditPiloto('${j.id}')">EDITAR</button>
-    <button class="btn btn-danger btn-sm" style="margin-left:.4rem;" onclick="confirmDelete('piloto','${j.id}','${j.username}')">✕</button></td></tr>`;
+    ${!_isGuest ? `<td><button class="btn btn-ghost btn-sm" onclick="openEditPiloto('${j.id}')">EDITAR</button>
+    <button class="btn btn-danger btn-sm" style="margin-left:.4rem;" onclick="confirmDelete('piloto','${j.id}','${j.username}')">✕</button></td>` : ''}</tr>`;
   }).join('')}</tbody></table>`;
 }
 
@@ -346,7 +375,7 @@ function renderTorneos() {
   const { torneos } = load();
   const el = document.getElementById('torneos-grid');
   if (!torneos.length) {
-    el.innerHTML = `<div class="empty"><div class="e-icon">🏆</div><p>Aún no hay torneos.</p><button class="btn btn-primary" onclick="openAddTorneo()">+ CREAR PRIMER TORNEO</button></div>`;
+    el.innerHTML = `<div class="empty"><div class="e-icon">🏆</div><p>Aún no hay torneos.</p>${!_isGuest ? '<button class="btn btn-primary" onclick="openAddTorneo()">+ CREAR PRIMER TORNEO</button>' : ''}</div>`;
     return;
   }
   el.innerHTML = `<div class="torneos-grid">${[...torneos].reverse().map(t => {
@@ -458,7 +487,7 @@ function renderTorneoDetail() {
         ${t.fecha ? `<span class="meta-pill">📅 ${t.fecha}</span>` : ''}
         ${t.clase !== 'LIBRE' && TOPES[t.clase]?.tope ? `<span class="meta-pill">TOPE ≥ ${TOPES[t.clase].tope}"</span>` : ''}
       </div></div>
-      <button class="btn btn-danger btn-sm" onclick="confirmDelete('torneo','${t.id}','${t.nombre}')">ELIMINAR</button>
+      ${!_isGuest ? `<button class="btn btn-danger btn-sm" onclick="confirmDelete('torneo','${t.id}','${t.nombre}')">ELIMINAR</button>` : ''}
     </div>
   </div>`;
   if (t.campeon) html += `<div style="background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;text-align:center;">
@@ -619,7 +648,7 @@ function renderLlaves() {
   detailView.style.display = 'none';
   const el = document.getElementById('llaves-grid');
   if (!llaves.length) {
-    el.innerHTML = `<div class="empty"><div class="e-icon">🔑</div><p>Aún no hay llaves creadas.</p><button class="btn btn-purple" onclick="openAddLlave()">+ CREAR PRIMERA LLAVE</button></div>`;
+    el.innerHTML = `<div class="empty"><div class="e-icon">🔑</div><p>Aún no hay llaves creadas.</p>${!_isGuest ? '<button class="btn btn-purple" onclick="openAddLlave()">+ CREAR PRIMERA LLAVE</button>' : ''}</div>`;
     return;
   }
   el.innerHTML = `<div class="torneos-grid">${[...llaves].reverse().map(lv => {
@@ -678,7 +707,7 @@ function renderLlaveDetail() {
         ${lv.fecha ? `<span class="meta-pill">📅 ${lv.fecha}</span>` : ''}
         ${lv.clase !== 'LIBRE' && TOPES[lv.clase]?.tope ? `<span class="meta-pill">TOPE ≥ ${TOPES[lv.clase].tope}"</span>` : ''}
       </div></div>
-      <button class="btn btn-danger btn-sm" onclick="confirmDelete('llave','${lv.id}','${lv.nombre}')">ELIMINAR</button>
+      ${!_isGuest ? `<button class="btn btn-danger btn-sm" onclick="confirmDelete('llave','${lv.id}','${lv.nombre}')">ELIMINAR</button>` : ''}
     </div>
   </div>`;
 
