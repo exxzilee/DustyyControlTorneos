@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PICADAS AR — Torneos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#07070a; --bg2:#0d0d12; --bg3:#14141c; --bg4:#1c1c27;
+      --border:#252535; --accent:#F5C518; --accent2:#e0b014;
+      --red:#FF3B30; --green:#34C759; --blue:#0A84FF; --purple:#BF5AF2;
+      --text:#e8e8f2; --text2:#7070a0; --text3:#40405a;
+      --display:'Bebas Neue',sans-serif; --body:'Rajdhani',sans-serif; --mono:'Share Tech Mono',monospace;
+    }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100vh;font-size:16px}
+    .race-bar{height:5px;background:repeating-linear-gradient(90deg,#fff 0,#fff 10px,#000 10px,#000 20px)}
+    header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:.5rem}
+    .logo{display:flex;flex-direction:column;padding:.9rem 0}
+    .logo-main{font-family:var(--display);font-size:2rem;letter-spacing:.12em;color:var(--accent);line-height:1}
+    .logo-sub{font-family:var(--mono);font-size:.65rem;color:var(--text2);letter-spacing:.25em}
+    nav{display:flex;flex-wrap:wrap}
+    nav button{font-family:var(--display);font-size:1.05rem;letter-spacing:.1em;background:none;border:none;border-bottom:3px solid transparent;color:var(--text2);padding:1.4rem 1.2rem 1.1rem;cursor:pointer;transition:color .2s,border-color .2s}
+    nav button:hover{color:var(--text)}
+    nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+    .container{max-width:1400px;margin:0 auto;padding:2rem}
+    section{display:none}
+    section.active{display:block}
+    .s-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.8rem;flex-wrap:wrap;gap:1rem}
+    .s-title{font-family:var(--display);font-size:2rem;letter-spacing:.12em;color:var(--text)}
+    .btn{font-family:var(--display);font-size:1rem;letter-spacing:.12em;padding:.55rem 1.3rem;border:none;border-radius:4px;cursor:pointer;transition:opacity .2s;display:inline-flex;align-items:center;gap:.4rem}
+    .btn:hover{opacity:.85}
+    .btn-primary{background:var(--accent);color:#000}
+    .btn-danger{background:var(--red);color:#fff}
+    .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+    .btn-ghost:hover{color:var(--text);border-color:var(--text2)}
+    .btn-purple{background:var(--purple);color:#fff}
+    .btn-sm{font-size:.85rem;padding:.35rem .9rem}
+    .table-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--border)}
+    table{width:100%;border-collapse:collapse}
+    th{font-family:var(--display);font-size:.85rem;letter-spacing:.18em;color:var(--text2);text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--border);background:var(--bg2)}
+    td{padding:.75rem 1rem;border-bottom:1px solid var(--border);font-size:.95rem;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tbody tr{background:var(--bg2)}
+    tbody tr:hover td{background:var(--bg3)}
+    .badge{font-family:var(--mono);font-size:.72rem;padding:.18rem .55rem;border-radius:3px;white-space:nowrap}
+    .badge-clase{background:var(--bg4);border:1px solid var(--border);color:var(--text2)}
+    .badge-active{background:rgba(52,199,89,.12);border:1px solid rgba(52,199,89,.3);color:var(--green)}
+    .badge-done{background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.3);color:var(--accent)}
+    .badge-pending{background:rgba(255,59,48,.1);border:1px solid rgba(255,59,48,.3);color:var(--red)}
+    .badge-rep{background:rgba(191,90,242,.12);border:1px solid rgba(191,90,242,.3);color:var(--purple)}
+    .tiempo-val{font-family:var(--mono);color:var(--accent)}
+    .tiempo-dq{font-family:var(--mono);color:var(--red);text-decoration:line-through}
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;padding:1rem}
+    .overlay.open{display:flex}
+    .modal{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:2rem;width:560px;max-width:100%;max-height:90vh;overflow-y:auto}
+    .modal-title{font-family:var(--display);font-size:1.5rem;letter-spacing:.12em;color:var(--accent);margin-bottom:1.5rem}
+    .form-row{margin-bottom:1.1rem}
+    label{display:block;font-size:.75rem;letter-spacing:.18em;color:var(--text2);text-transform:uppercase;margin-bottom:.35rem}
+    input[type=text],input[type=number],select,textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:.65rem .9rem;font-family:var(--body);font-size:1rem;outline:none;transition:border-color .2s}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+    .helper{font-family:var(--mono);font-size:.72rem;color:var(--text2);margin-top:.3rem}
+    .helper.warn{color:var(--red)}
+    .helper.ok{color:var(--green)}
+    .modal-actions{display:flex;gap:.8rem;justify-content:flex-end;margin-top:1.5rem}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    #toast{position:fixed;bottom:1.5rem;right:1.5rem;font-family:var(--mono);font-size:.85rem;padding:.8rem 1.3rem;border-radius:5px;z-index:999;opacity:0;transform:translateY(.8rem);transition:all .3s;pointer-events:none;background:var(--bg3);border:1px solid var(--border)}
+    #toast.show{opacity:1;transform:translateY(0)}
+    #toast.ok{border-color:var(--green);color:var(--green)}
+    #toast.err{border-color:var(--red);color:var(--red)}
+    #toast.info{border-color:var(--accent);color:var(--accent)}
+    .empty{text-align:center;padding:4rem 2rem;color:var(--text2)}
+    .empty .e-icon{font-size:3rem;margin-bottom:1rem}
+    .empty p{margin-bottom:1.5rem;font-size:1.05rem}
+    .stat-row{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:2rem}
+    .stat-card{flex:1;min-width:140px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1.2rem 1.5rem;text-align:center}
+    .stat-val{font-family:var(--display);font-size:2.5rem;color:var(--accent);line-height:1}
+    .stat-lbl{font-family:var(--mono);font-size:.7rem;color:var(--text2);letter-spacing:.18em;margin-top:.35rem}
+    .torneos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}
+    .t-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1.4rem;cursor:pointer;transition:border-color .2s,transform .2s}
+    .t-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+    .t-card-name{font-family:var(--display);font-size:1.35rem;letter-spacing:.1em;margin-bottom:.6rem}
+    .t-card-meta{display:flex;gap:.5rem;flex-wrap:wrap}
+    .back-btn{font-family:var(--display);letter-spacing:.1em;font-size:1rem;color:var(--text2);background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:.4rem;margin-bottom:1.5rem;transition:color .2s}
+    .back-btn:hover{color:var(--accent)}
+    .bracket-scroll{overflow-x:auto;padding:1rem 0}
+    .bracket{display:flex;gap:2.5rem;align-items:stretch;min-width:max-content;padding:.5rem 1rem}
+    .b-round{display:flex;flex-direction:column;gap:0;min-width:230px}
+    .b-round-title{font-family:var(--display);font-size:.85rem;letter-spacing:.22em;color:var(--text2);text-align:center;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:.5rem}
+    .b-round-title.rep-title{color:var(--purple);border-bottom-color:rgba(191,90,242,.4)}
+    .b-matches{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:0}
+    .b-match-wrap{display:flex;flex-direction:column;justify-content:center;flex:1;padding:.6rem 0}
+    .b-match{background:var(--bg3);border:1px solid var(--border);border-radius:5px;overflow:hidden;transition:border-color .2s}
+    .b-match.clickable{cursor:pointer}
+    .b-match.clickable:hover{border-color:var(--accent)}
+    .b-match.rep-match{border-color:rgba(191,90,242,.25)}
+    .b-match.rep-match.clickable:hover{border-color:var(--purple)}
+    .b-match-num{font-family:var(--mono);font-size:.6rem;color:var(--text3);padding:.2rem .5rem;background:var(--bg);border-bottom:1px solid var(--border)}
+    .b-match-num.rep-num{color:rgba(191,90,242,.6)}
+    .b-player{display:flex;align-items:center;justify-content:space-between;padding:.55rem .75rem;gap:.5rem;min-height:36px}
+    .b-player+.b-player{border-top:1px solid var(--border)}
+    .b-player.winner{background:rgba(245,197,24,.08)}
+    .b-player.loser{opacity:.35}
+    .b-player-name{font-weight:600;font-size:.88rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .b-player-time{font-family:var(--mono);font-size:.75rem;color:var(--accent);flex-shrink:0}
+    .b-player-time.dq{color:var(--red)}
+    .b-bye{padding:.5rem .75rem;font-family:var(--mono);font-size:.7rem;color:var(--text3);border-top:1px dashed var(--border)}
+    .b-tbd{color:var(--text3);font-style:italic;font-size:.82rem}
+    .b-rep-pending{color:var(--purple);font-style:italic;font-size:.8rem}
+    .rep-arrow{display:flex;align-items:center;justify-content:center;min-width:30px;color:var(--text3);font-size:1.2rem;align-self:stretch}
+    .rep-separator{display:flex;align-items:center;gap:1rem;margin:1.5rem 0;padding:0 1rem}
+    .rep-sep-line{flex:1;height:1px;background:rgba(191,90,242,.3)}
+    .rep-sep-label{font-family:var(--display);font-size:.85rem;letter-spacing:.2em;color:var(--purple);white-space:nowrap}
+    .players-side{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .player-side-box{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:1rem}
+    .side-name{font-family:var(--display);font-size:1.1rem;letter-spacing:.05em;margin-bottom:.8rem;min-height:2rem}
+    .rank-num{font-family:var(--mono);font-size:.85rem;color:var(--text3)}
+    .rank-1 .rank-num{color:var(--accent);font-size:1rem}
+    .rank-2 .rank-num{color:#aaaacc}
+    .rank-3 .rank-num{color:#b46428}
+    .divider{height:1px;background:var(--border);margin:2rem 0}
+    .chips-wrap{display:flex;flex-wrap:wrap;gap:.4rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:.7rem;min-height:70px;max-height:180px;overflow-y:auto}
+    .chip{display:flex;align-items:center;gap:.35rem;background:var(--bg4);border:1px solid var(--border);border-radius:3px;padding:.28rem .6rem;font-size:.82rem;cursor:pointer;transition:all .15s;user-select:none}
+    .chip:hover{border-color:var(--text2)}
+    .chip.sel{background:rgba(245,197,24,.1);border-color:var(--accent);color:var(--accent)}
+    .chip-class{font-family:var(--mono);font-size:.65rem;color:var(--text2)}
+    .chip.sel .chip-class{color:var(--accent2)}
+    .topes-ref{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.8rem}
+    .tope-pill{font-family:var(--mono);font-size:.72rem;padding:.2rem .55rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text2)}
+    .tope-pill span{color:var(--accent)}
+    .t-detail-head{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem}
+    .t-detail-name{font-family:var(--display);font-size:2.2rem;letter-spacing:.1em;margin-bottom:.6rem}
+    .t-detail-meta{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+    .meta-pill{font-family:var(--mono);font-size:.72rem;padding:.22rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text2)}
+
+    /* ── LLAVE PREVIEW BOX ── */
+    .llave-preview{background:var(--bg3);border:1px solid rgba(191,90,242,.35);border-radius:6px;padding:1rem;margin-top:.8rem;font-family:var(--mono);font-size:.78rem;line-height:1.8}
+    .llave-preview .lp-row{display:flex;align-items:center;gap:.6rem}
+    .llave-preview .lp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .lp-dot.purple{background:var(--purple)}
+    .lp-dot.yellow{background:var(--accent)}
+    .lp-dot.green{background:var(--green)}
+
+    /* ── ROUND CONNECTOR ── */
+    .bracket-with-rep{display:flex;flex-direction:column;gap:0}
+    .repechaje-section{margin-bottom:.5rem}
+    .rep-section-title{font-family:var(--display);font-size:1rem;letter-spacing:.2em;color:var(--purple);padding:.6rem 1rem;border-bottom:1px solid rgba(191,90,242,.3);background:rgba(191,90,242,.05);border-radius:6px 6px 0 0;border:1px solid rgba(191,90,242,.25);border-bottom:none}
+    .rep-section-body{padding:1rem;background:rgba(191,90,242,.04);border:1px solid rgba(191,90,242,.2);border-top:none;border-radius:0 0 6px 6px;margin-bottom:1.5rem}
+    .rep-matches-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.8rem}
+
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:var(--bg2)}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+    ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+
+    @media(max-width:700px){
+      .container{padding:1rem}
+      nav button{padding:1.2rem .7rem;font-size:.9rem;letter-spacing:.04em}
+      .grid-2,.players-side{grid-template-columns:1fr}
+      .stat-val{font-size:2rem}
+    }
+  </style>
+</head>
+<body>
+<div class="race-bar"></div>
+<header>
+  <div class="logo">
+    <div class="logo-main">🏎 PICADAS AR</div>
+    <div class="logo-sub">GESTOR DE TORNEOS — ROBLOX</div>
+  </div>
+  <nav>
+    <button class="active" onclick="goTab('jugadores')">PILOTOS</button>
+    <button onclick="goTab('torneos')">TORNEOS</button>
+    <button onclick="goTab('llaves')">LLAVES</button>
+    <button onclick="goTab('stats')">ESTADÍSTICAS</button>
+  </nav>
+</header>
+
+<!-- ══════════════════════ PILOTOS ══ -->
+<section id="jugadores" class="active">
+  <div class="container">
+    <div class="s-head">
+      <div class="s-title">PILOTOS REGISTRADOS</div>
+      <div style="display:flex;gap:.7rem;align-items:center;">
+        <input id="searchPiloto" class="btn btn-ghost" type="text" placeholder="🔍  Buscar…" style="width:200px;font-family:var(--body);font-size:.9rem;" oninput="renderJugadores()">
+        <button class="btn btn-primary" onclick="openAddPiloto()">+ AGREGAR PILOTO</button>
+      </div>
+    </div>
+    <details style="margin-bottom:1.5rem;">
+      <summary style="cursor:pointer;font-family:var(--mono);font-size:.8rem;color:var(--text2);letter-spacing:.1em;user-select:none;">▸ VER TOPES OFICIALES POR CLASE</summary>
+      <div class="topes-ref" style="margin-top:.8rem;">
+        <div class="tope-pill">C1 → <span>≥ 11.30"</span></div>
+        <div class="tope-pill">C2 → <span>≥ 10.80"</span></div>
+        <div class="tope-pill">C3 → <span>≥ 10.30"</span></div>
+        <div class="tope-pill">C4 → <span>≥ 9.70"</span></div>
+        <div class="tope-pill">C5 → <span>≥ 9.00"</span></div>
+        <div class="tope-pill">C6 → <span>≥ 8.50"</span></div>
+        <div class="tope-pill">C7 → <span>≥ 8.00"</span></div>
+        <div class="tope-pill">C8 → <span>≥ 7.60"</span></div>
+        <div class="tope-pill">C9 → <span>≥ 7.20"</span></div>
+        <div class="tope-pill">C10 → <span>≥ 6.70"</span></div>
+        <div class="tope-pill">L1 → <span>SIN TOPE</span></div>
+      </div>
+      <p style="font-family:var(--mono);font-size:.7rem;color:var(--text3);margin-top:.6rem;">⚠ Si corrés MÁS RÁPIDO que el tope → DESCALIFICADO (cruzás el tope)</p>
+    </details>
+    <div id="jugadores-table" class="table-wrap"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════ TORNEOS ══ -->
+<section id="torneos">
+  <div class="container">
+    <div id="torneos-list-view">
+      <div class="s-head">
+        <div class="s-title">TORNEOS</div>
+        <button class="btn btn-primary" onclick="openAddTorneo()">+ NUEVO TORNEO</button>
+      </div>
+      <div id="torneos-grid"></div>
+    </div>
+    <div id="torneo-detail-view" style="display:none;">
+      <button class="back-btn" onclick="closeTorneoDetail()">← VOLVER A TORNEOS</button>
+      <div id="torneo-detail-content"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ LLAVES ══ -->
+<section id="llaves">
+  <div class="container">
+    <div id="llaves-list-view">
+      <div class="s-head">
+        <div class="s-title">LLAVES</div>
+        <button class="btn btn-purple" onclick="openAddLlave()">+ NUEVA LLAVE</button>
+      </div>
+      <div id="llaves-grid"></div>
+    </div>
+    <div id="llave-detail-view" style="display:none;">
+      <button class="back-btn" onclick="closeLlaveDetail()">← VOLVER A LLAVES</button>
+      <div id="llave-detail-content"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ STATS ══ -->
+<section id="stats">
+  <div class="container">
+    <div class="s-title" style="margin-bottom:1.5rem;">ESTADÍSTICAS GLOBALES</div>
+    <div id="stats-content"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════ MODALS ══ -->
+
+<!-- Add/Edit Piloto -->
+<div class="overlay" id="modal-piloto">
+  <div class="modal">
+    <div class="modal-title" id="modal-piloto-title">NUEVO PILOTO</div>
+    <input type="hidden" id="p-id">
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Username Roblox</label>
+        <input type="text" id="p-username" placeholder="Ej: VelocidadMax99">
+      </div>
+      <div class="form-row">
+        <label>Vehículo</label>
+        <input type="text" id="p-vehiculo" placeholder="Ej: Torino 380 W">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Clase Principal</label>
+      <select id="p-clase">
+        <option value="C1">CLASE 1 — Tope ≥ 11.30"</option>
+        <option value="C2">CLASE 2 — Tope ≥ 10.80"</option>
+        <option value="C3">CLASE 3 — Tope ≥ 10.30"</option>
+        <option value="C4">CLASE 4 — Tope ≥ 9.70"</option>
+        <option value="C5">CLASE 5 — Tope ≥ 9.00"</option>
+        <option value="C6">CLASE 6 — Tope ≥ 8.50"</option>
+        <option value="C7">CLASE 7 — Tope ≥ 8.00"</option>
+        <option value="C8">CLASE 8 — Tope ≥ 7.60"</option>
+        <option value="C9">CLASE 9 — Tope ≥ 7.20"</option>
+        <option value="C10">CLASE 10 — Tope ≥ 6.70"</option>
+        <option value="L1">LIBRE L1 — Sin tope</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Mejor tiempo registrado (seg) — opcional</label>
+      <input type="number" id="p-mejor" placeholder="Ej: 11.45" step="0.001" min="0">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-piloto')">CANCELAR</button>
+      <button class="btn btn-primary" onclick="savePiloto()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Torneo -->
+<div class="overlay" id="modal-torneo">
+  <div class="modal" style="width:600px;">
+    <div class="modal-title">NUEVO TORNEO</div>
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Nombre del Torneo</label>
+        <input type="text" id="t-nombre" placeholder="Ej: Copa Cuarto de Milla #1">
+      </div>
+      <div class="form-row">
+        <label>Fecha</label>
+        <input type="text" id="t-fecha" placeholder="Ej: 23/03/2026">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Clase</label>
+      <select id="t-clase" onchange="filterChips('t')">
+        <option value="">— Todas las clases —</option>
+        <option value="C1">CLASE 1</option><option value="C2">CLASE 2</option>
+        <option value="C3">CLASE 3</option><option value="C4">CLASE 4</option>
+        <option value="C5">CLASE 5</option><option value="C6">CLASE 6</option>
+        <option value="C7">CLASE 7</option><option value="C8">CLASE 8</option>
+        <option value="C9">CLASE 9</option><option value="C10">CLASE 10</option>
+        <option value="L1">LIBRE L1</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Pilotos participantes <span id="t-chips-count" style="color:var(--accent);">(0)</span></label>
+      <div class="chips-wrap" id="t-chips-container"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-torneo')">CANCELAR</button>
+      <button class="btn btn-primary" onclick="saveTorneo()">CREAR Y GENERAR BRACKET</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Llave -->
+<div class="overlay" id="modal-llave">
+  <div class="modal" style="width:620px;">
+    <div class="modal-title" style="color:var(--purple);">NUEVA LLAVE</div>
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Nombre de la Llave</label>
+        <input type="text" id="lv-nombre" placeholder="Ej: Llave A — Clase 3">
+      </div>
+      <div class="form-row">
+        <label>Fecha</label>
+        <input type="text" id="lv-fecha" placeholder="Ej: 23/03/2026">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Clase</label>
+        <select id="lv-clase" onchange="filterChips('lv')">
+          <option value="">— Todas —</option>
+          <option value="C1">CLASE 1</option><option value="C2">CLASE 2</option>
+          <option value="C3">CLASE 3</option><option value="C4">CLASE 4</option>
+          <option value="C5">CLASE 5</option><option value="C6">CLASE 6</option>
+          <option value="C7">CLASE 7</option><option value="C8">CLASE 8</option>
+          <option value="C9">CLASE 9</option><option value="C10">CLASE 10</option>
+          <option value="L1">LIBRE L1</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Cantidad de corredores</label>
+        <select id="lv-n" onchange="updateLlavePreview()">
+          <option value="8">8 corredores</option>
+          <option value="10">10 corredores</option>
+          <option value="12">12 corredores</option>
+          <option value="14">14 corredores</option>
+          <option value="16" selected>16 corredores</option>
+          <option value="18">18 corredores</option>
+          <option value="20">20 corredores</option>
+          <option value="24">24 corredores</option>
+          <option value="28">28 corredores</option>
+          <option value="32">32 corredores</option>
+        </select>
+      </div>
+    </div>
+    <div id="llave-preview-box"></div>
+    <div class="form-row" style="margin-top:.8rem;">
+      <label>Seleccioná los pilotos <span id="lv-chips-count" style="color:var(--purple);">(0 seleccionados)</span></label>
+      <div class="chips-wrap" id="lv-chips-container"></div>
+      <div class="helper">El sorteo es al azar. Los repechajistas se asignan automáticamente.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-llave')">CANCELAR</button>
+      <button class="btn btn-purple" onclick="saveLlave()">GENERAR LLAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Result -->
+<div class="overlay" id="modal-result">
+  <div class="modal" style="width:520px;">
+    <div class="modal-title" id="r-modal-title">REGISTRAR RESULTADO</div>
+    <input type="hidden" id="r-context-type"> <!-- 'torneo' | 'llave' | 'llave-rep' -->
+    <input type="hidden" id="r-parent-id">
+    <input type="hidden" id="r-ronda-idx">
+    <input type="hidden" id="r-match-idx">
+    <div id="r-clase-info" style="font-family:var(--mono);font-size:.75rem;color:var(--text2);margin-bottom:1.2rem;"></div>
+    <div class="players-side">
+      <div class="player-side-box">
+        <div class="side-name" id="r-name1">—</div>
+        <div class="form-row">
+          <label>Tiempo (segundos)</label>
+          <input type="number" id="r-time1" placeholder="Ej: 11.45" step="0.001" min="0">
+        </div>
+        <div id="r-warn1" class="helper warn" style="display:none;"></div>
+      </div>
+      <div class="player-side-box">
+        <div class="side-name" id="r-name2">—</div>
+        <div class="form-row">
+          <label>Tiempo (segundos)</label>
+          <input type="number" id="r-time2" placeholder="Ej: 11.60" step="0.001" min="0">
+        </div>
+        <div id="r-warn2" class="helper warn" style="display:none;"></div>
+      </div>
+    </div>
+    <div id="r-preview" style="margin-top:1rem;font-family:var(--mono);font-size:.8rem;color:var(--text2);min-height:1.2rem;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-result')">CANCELAR</button>
+      <button class="btn btn-primary" onclick="saveResult()">CONFIRMAR RESULTADO</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="overlay" id="modal-delete">
+  <div class="modal" style="width:400px;">
+    <div class="modal-title" style="color:var(--red);">CONFIRMAR ELIMINACIÓN</div>
+    <p id="delete-msg" style="margin-bottom:1.5rem;color:var(--text2);line-height:1.5;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-delete')">CANCELAR</button>
+      <button class="btn btn-danger" id="delete-confirm-btn">ELIMINAR</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═════════════════════════════ DATA ══════════════════════════════
+const TOPES = {
+  C1:{label:'CLASE 1',tope:11.30}, C2:{label:'CLASE 2',tope:10.80},
+  C3:{label:'CLASE 3',tope:10.30}, C4:{label:'CLASE 4',tope:9.70},
+  C5:{label:'CLASE 5',tope:9.00},  C6:{label:'CLASE 6',tope:8.50},
+  C7:{label:'CLASE 7',tope:8.00},  C8:{label:'CLASE 8',tope:7.60},
+  C9:{label:'CLASE 9',tope:7.20},  C10:{label:'CLASE 10',tope:6.70},
+  L1:{label:'LIBRE L1',tope:null}
+};
+
+const KEY = 'picadasAR_v3';
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (!d) return {jugadores:[],torneos:[],llaves:[]};
+    if (!d.llaves) d.llaves = [];
+    return d;
+  } catch { return {jugadores:[],torneos:[],llaves:[]}; }
+}
+function save(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
+function uid()   { return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+// ─── Migrate old data ────────────────────────────────────────────
+(function migrate() {
+  const old = localStorage.getItem('picadasAR_v2');
+  if (old && !localStorage.getItem(KEY)) {
+    try {
+      const d = JSON.parse(old);
+      d.llaves = [];
+      localStorage.setItem(KEY, JSON.stringify(d));
+    } catch {}
+  }
+})();
+
+let activeTorneoId = null;
+let activeLlaveId  = null;
+
+// ═════════════════════════════ NAV ═══════════════════════════════
+function goTab(tab) {
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+  const tabs=['jugadores','torneos','llaves','stats'];
+  document.querySelectorAll('nav button')[tabs.indexOf(tab)].classList.add('active');
+  if(tab==='jugadores') renderJugadores();
+  if(tab==='torneos')   renderTorneos();
+  if(tab==='llaves')    renderLlaves();
+  if(tab==='stats')     renderStats();
+}
+
+// ═════════════════════════════ TOAST ═════════════════════════════
+let toastTimer;
+function toast(msg,type='info'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className=`show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{el.className=''},2800);
+}
+
+// ═════════════════════════════ MODALS ════════════════════════════
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function openModal(id) {document.getElementById(id).classList.add('open')}
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')});
+});
+
+// ═════════════════════════════ PILOTOS ═══════════════════════════
+function renderJugadores(){
+  const {jugadores}=load();
+  const q=(document.getElementById('searchPiloto')?.value||'').toLowerCase();
+  const filtered=jugadores.filter(j=>
+    j.username.toLowerCase().includes(q)||(j.vehiculo||'').toLowerCase().includes(q)||j.clase.toLowerCase().includes(q)
+  );
+  const el=document.getElementById('jugadores-table');
+  if(!filtered.length){
+    el.innerHTML=`<div class="empty"><div class="e-icon">🏎</div><p>${jugadores.length?'Sin resultados.':'Aún no hay pilotos.'}</p><button class="btn btn-primary" onclick="openAddPiloto()">+ AGREGAR EL PRIMER PILOTO</button></div>`;
+    return;
+  }
+  el.innerHTML=`<table><thead><tr><th>#</th><th>USERNAME</th><th>VEHÍCULO</th><th>CLASE</th><th>MEJOR TIEMPO</th><th>V</th><th>D</th><th>TORNEOS</th><th>ACCIONES</th></tr></thead>
+  <tbody>${filtered.map((j,i)=>{
+    const tope=TOPES[j.clase]?.tope;
+    const isFast=tope!==null&&j.mejorTiempo!=null&&j.mejorTiempo<tope;
+    return `<tr><td style="color:var(--text3);font-family:var(--mono);font-size:.8rem;">${i+1}</td>
+    <td><strong>${j.username}</strong></td><td style="color:var(--text2);">${j.vehiculo||'—'}</td>
+    <td><span class="badge badge-clase">${TOPES[j.clase]?.label||j.clase}</span></td>
+    <td><span class="${isFast?'tiempo-dq':'tiempo-val'}">${j.mejorTiempo!=null?j.mejorTiempo.toFixed(3)+'"':'—'}</span></td>
+    <td style="color:var(--green);font-family:var(--mono);">${j.victorias||0}</td>
+    <td style="color:var(--red);font-family:var(--mono);">${j.derrotas||0}</td>
+    <td style="font-family:var(--mono);">${j.torneos||0}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="openEditPiloto('${j.id}')">EDITAR</button>
+    <button class="btn btn-danger btn-sm" style="margin-left:.4rem;" onclick="confirmDelete('piloto','${j.id}','${j.username}')">✕</button></td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function openAddPiloto(){
+  document.getElementById('modal-piloto-title').textContent='NUEVO PILOTO';
+  ['p-id','p-username','p-vehiculo','p-mejor'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p-clase').value='C1';
+  openModal('modal-piloto');
+}
+function openEditPiloto(id){
+  const {jugadores}=load();
+  const j=jugadores.find(x=>x.id===id); if(!j) return;
+  document.getElementById('modal-piloto-title').textContent='EDITAR PILOTO';
+  document.getElementById('p-id').value=j.id;
+  document.getElementById('p-username').value=j.username;
+  document.getElementById('p-vehiculo').value=j.vehiculo||'';
+  document.getElementById('p-clase').value=j.clase;
+  document.getElementById('p-mejor').value=j.mejorTiempo!=null?j.mejorTiempo:'';
+  openModal('modal-piloto');
+}
+function savePiloto(){
+  const state=load();
+  const id=document.getElementById('p-id').value;
+  const username=document.getElementById('p-username').value.trim();
+  const vehiculo=document.getElementById('p-vehiculo').value.trim();
+  const clase=document.getElementById('p-clase').value;
+  const mejorRaw=document.getElementById('p-mejor').value;
+  const mejorTiempo=mejorRaw!==''?parseFloat(mejorRaw):null;
+  if(!username){toast('El username no puede estar vacío.','err');return;}
+  if(id){
+    const idx=state.jugadores.findIndex(j=>j.id===id);
+    if(idx>=0) state.jugadores[idx]={...state.jugadores[idx],username,vehiculo,clase,mejorTiempo};
+    toast(`✓ ${username} actualizado`,'ok');
+  } else {
+    if(state.jugadores.find(j=>j.username.toLowerCase()===username.toLowerCase())){toast('Username ya existe.','err');return;}
+    state.jugadores.push({id:uid(),username,vehiculo,clase,mejorTiempo,victorias:0,derrotas:0,torneos:0});
+    toast(`✓ ${username} registrado`,'ok');
+  }
+  save(state); closeModal('modal-piloto'); renderJugadores();
+}
+
+// ═════════════════════════════ HELPERS ═══════════════════════════
+function getJugadorNombre(id){
+  const {jugadores}=load();
+  return jugadores.find(j=>j.id===id)?.username||'???';
+}
+function confirmDelete(type,id,name){
+  document.getElementById('delete-msg').textContent=
+    type==='piloto'?`¿Eliminar al piloto "${name}"?`:
+    type==='torneo'?`¿Eliminar el torneo "${name}"?`:
+    `¿Eliminar la llave "${name}"? Esta acción no se puede deshacer.`;
+  document.getElementById('delete-confirm-btn').onclick=()=>{
+    const state=load();
+    if(type==='piloto') state.jugadores=state.jugadores.filter(j=>j.id!==id);
+    if(type==='torneo') state.torneos=state.torneos.filter(t=>t.id!==id);
+    if(type==='llave')  state.llaves=state.llaves.filter(l=>l.id!==id);
+    save(state); closeModal('modal-delete');
+    toast('Eliminado','ok');
+    if(type==='piloto') renderJugadores();
+    if(type==='torneo') renderTorneos();
+    if(type==='llave')  renderLlaves();
+  };
+  openModal('modal-delete');
+}
+
+// ─── Chips (shared) ──────────────────────────────────────────────
+function renderChips(prefix, claseFilter){
+  const {jugadores}=load();
+  const container=document.getElementById(`${prefix}-chips-container`);
+  const filtered=claseFilter?jugadores.filter(j=>j.clase===claseFilter):jugadores;
+  container.innerHTML=filtered.map(j=>
+    `<div class="chip" id="${prefix}-chip-${j.id}" onclick="toggleChip('${prefix}','${j.id}')">
+      ${j.username}<span class="chip-class">${TOPES[j.clase]?.label.replace('CLASE ','C').replace('LIBRE ','L')||j.clase}</span>
+    </div>`).join('');
+  updateChipCount(prefix);
+}
+function filterChips(prefix){
+  const clase=document.getElementById(`${prefix}-clase`).value;
+  renderChips(prefix,clase);
+}
+function toggleChip(prefix,id){
+  const el=document.getElementById(`${prefix}-chip-${id}`);
+  el.classList.toggle('sel');
+  updateChipCount(prefix);
+  if(prefix==='lv') updateLlavePreview();
+}
+function updateChipCount(prefix){
+  const count=document.querySelectorAll(`#${prefix}-chips-container .chip.sel`).length;
+  const el=document.getElementById(`${prefix}-chips-count`);
+  if(el) el.textContent=`(${count} seleccionados)`;
+}
+function getSelectedChips(prefix){
+  return [...document.querySelectorAll(`#${prefix}-chips-container .chip.sel`)].map(c=>c.id.replace(`${prefix}-chip-`,''));
+}
+
+// ═════════════════════════════ TORNEOS ═══════════════════════════
+function renderTorneos(){
+  const {torneos}=load();
+  const el=document.getElementById('torneos-grid');
+  if(!torneos.length){
+    el.innerHTML=`<div class="empty"><div class="e-icon">🏆</div><p>Aún no hay torneos.</p><button class="btn btn-primary" onclick="openAddTorneo()">+ CREAR PRIMER TORNEO</button></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="torneos-grid">${[...torneos].reverse().map(t=>{
+    const total=t.bracket.rondas.reduce((a,r)=>a+r.filter(m=>m.estado!=='bye').length,0);
+    const done =t.bracket.rondas.reduce((a,r)=>a+r.filter(m=>m.estado==='completado').length,0);
+    const bc=t.estado==='finalizado'?'badge-done':t.estado==='activo'?'badge-active':'badge-pending';
+    const bl=t.estado==='finalizado'?'FINALIZADO':t.estado==='activo'?'EN CURSO':'PENDIENTE';
+    return `<div class="t-card" onclick="openTorneoDetail('${t.id}')">
+      <div class="t-card-name">${t.nombre}</div>
+      <div class="t-card-meta">
+        <span class="badge ${bc}">${bl}</span>
+        <span class="meta-pill">${TOPES[t.clase]?.label||t.clase||'LIBRE'}</span>
+        <span class="meta-pill">${t.jugadores.length} pilotos</span>
+        <span class="meta-pill">${done}/${total} carreras</span>
+        ${t.fecha?`<span class="meta-pill">${t.fecha}</span>`:''}
+      </div>
+      ${t.campeon?`<div style="margin-top:.8rem;font-family:var(--mono);font-size:.75rem;color:var(--accent);">🏆 ${getJugadorNombre(t.campeon)}</div>`:''}
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function openAddTorneo(){
+  const {jugadores}=load();
+  if(!jugadores.length){toast('Primero registrá pilotos.','err');return;}
+  document.getElementById('t-nombre').value='';
+  document.getElementById('t-fecha').value=new Date().toLocaleDateString('es-AR');
+  document.getElementById('t-clase').value='';
+  renderChips('t','');
+  openModal('modal-torneo');
+}
+
+function saveTorneo(){
+  const nombre=document.getElementById('t-nombre').value.trim();
+  const fecha =document.getElementById('t-fecha').value.trim();
+  const clase =document.getElementById('t-clase').value;
+  const selected=getSelectedChips('t');
+  if(!nombre){toast('Poné un nombre.','err');return;}
+  if(selected.length<2){toast('Seleccioná al menos 2 pilotos.','err');return;}
+  const bracket=generarBracketSimple(selected);
+  const state=load();
+  selected.forEach(pid=>{
+    const idx=state.jugadores.findIndex(j=>j.id===pid);
+    if(idx>=0) state.jugadores[idx].torneos=(state.jugadores[idx].torneos||0)+1;
+  });
+  state.torneos.push({id:uid(),nombre,fecha,clase:clase||'LIBRE',estado:'activo',jugadores:selected,bracket:{rondas:bracket},campeon:null});
+  save(state); toast(`✓ Torneo "${nombre}" creado`,'ok');
+  closeModal('modal-torneo'); renderTorneos();
+}
+
+function generarBracketSimple(jugadoresIds){
+  const shuffled=[...jugadoresIds].sort(()=>Math.random()-.5);
+  const slots=Math.pow(2,Math.ceil(Math.log2(Math.max(shuffled.length,2))));
+  while(shuffled.length<slots) shuffled.push(null);
+  const numRondas=Math.log2(slots);
+  const rondas=[];
+  for(let r=0;r<numRondas;r++){
+    const matchCount=slots/Math.pow(2,r+1);
+    const ronda=[];
+    for(let m=0;m<matchCount;m++){
+      const match={id:`r${r}m${m}`,j1:r===0?shuffled[m*2]:null,j2:r===0?shuffled[m*2+1]:null,tiempo1:null,tiempo2:null,ganador:null,dq1:false,dq2:false,estado:'pendiente'};
+      if(r===0&&match.j2===null){match.ganador=match.j1;match.estado='bye';}
+      ronda.push(match);
+    }
+    rondas.push(ronda);
+  }
+  for(let r=0;r<rondas.length-1;r++){
+    rondas[r].forEach((m,mi)=>{
+      if(m.ganador){
+        const next=rondas[r+1][Math.floor(mi/2)];
+        if(mi%2===0) next.j1=m.ganador; else next.j2=m.ganador;
+        if(next.j1&&!next.j2){next.ganador=next.j1;next.estado='bye';}
+        if(next.j2&&!next.j1){next.ganador=next.j2;next.estado='bye';}
+      }
+    });
+  }
+  return rondas;
+}
+
+function openTorneoDetail(id){
+  activeTorneoId=id;
+  document.getElementById('torneos-list-view').style.display='none';
+  document.getElementById('torneo-detail-view').style.display='block';
+  renderTorneoDetail();
+}
+function closeTorneoDetail(){
+  activeTorneoId=null;
+  document.getElementById('torneos-list-view').style.display='';
+  document.getElementById('torneo-detail-view').style.display='none';
+  renderTorneos();
+}
+
+function renderTorneoDetail(){
+  if(!activeTorneoId) return;
+  const {torneos}=load();
+  const t=torneos.find(x=>x.id===activeTorneoId);
+  if(!t){closeTorneoDetail();return;}
+  const total=t.bracket.rondas.reduce((a,r)=>a+r.filter(m=>m.estado!=='bye').length,0);
+  const done =t.bracket.rondas.reduce((a,r)=>a+r.filter(m=>m.estado==='completado').length,0);
+  const bc=t.estado==='finalizado'?'badge-done':'badge-active';
+  const bl=t.estado==='finalizado'?'FINALIZADO':'EN CURSO';
+  let html=`<div class="t-detail-head">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div><div class="t-detail-name">${t.nombre}</div>
+      <div class="t-detail-meta">
+        <span class="badge ${bc}">${bl}</span>
+        <span class="meta-pill">${TOPES[t.clase]?.label||t.clase}</span>
+        <span class="meta-pill">${t.jugadores.length} pilotos</span>
+        <span class="meta-pill">${done}/${total} carreras</span>
+        ${t.fecha?`<span class="meta-pill">📅 ${t.fecha}</span>`:''}
+        ${t.clase!=='LIBRE'&&TOPES[t.clase]?.tope?`<span class="meta-pill">TOPE ≥ ${TOPES[t.clase].tope}"</span>`:''}
+      </div></div>
+      <button class="btn btn-danger btn-sm" onclick="confirmDelete('torneo','${t.id}','${t.nombre}')">ELIMINAR</button>
+    </div>
+  </div>`;
+  if(t.campeon) html+=`<div style="background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:.5rem;">🏆</div>
+    <div style="font-family:var(--mono);font-size:.75rem;color:var(--accent);letter-spacing:.3em;margin-bottom:.4rem;">CAMPEÓN DEL TORNEO</div>
+    <div style="font-family:var(--display);font-size:2.5rem;letter-spacing:.1em;">${getJugadorNombre(t.campeon)}</div>
+  </div>`;
+  html+=`<div class="bracket-scroll"><div class="bracket">${renderBracketCols(t.bracket.rondas, 'torneo', t.id, t.clase)}</div></div>`;
+  document.getElementById('torneo-detail-content').innerHTML=html;
+}
+
+// ══════════════════════════════════════════ LLAVES ════════════════
+
+// ─── Llave math ──────────────────────────────────────────────────
+function calcLlave(n){
+  const lp2=Math.pow(2,Math.floor(Math.log2(n)));
+  const isPow2=(n&(n-1))===0;
+  if(isPow2){
+    return {hasRep:false,mainSize:n,repMatches:0,directSlots:n,repSlots:0,rondas:Math.log2(n)};
+  }
+  const excess=n-lp2;          // número de repechajes
+  const repPlayers=excess*2;   // corredores que van al repechaje
+  const directSlots=lp2-excess;// corredores que pasan directo al bracket principal
+  return {hasRep:true,mainSize:lp2,repMatches:excess,repPlayers,directSlots,rondas:Math.log2(lp2)};
+}
+
+function updateLlavePreview(){
+  const n=parseInt(document.getElementById('lv-n').value);
+  const sel=getSelectedChips('lv').length;
+  const c=calcLlave(n);
+  const box=document.getElementById('llave-preview-box');
+  let html=`<div class="llave-preview">`;
+  if(c.hasRep){
+    html+=`<div class="lp-row"><span class="lp-dot purple"></span><strong style="color:var(--purple);">REPECHAJE:</strong> ${c.repMatches} carreras clasificatorias (${c.repPlayers} pilotos)</div>`;
+    html+=`<div class="lp-row"><span class="lp-dot yellow"></span><strong style="color:var(--accent);">BRACKET PRINCIPAL:</strong> cuadro de ${c.mainSize} (${c.rondas} rondas)</div>`;
+    html+=`<div class="lp-row"><span class="lp-dot" style="background:var(--text2)"></span><strong>${c.directSlots} pilotos</strong> pasan directo al bracket — <strong>${c.repMatches} ganadores</strong> del repechaje completan el cuadro</div>`;
+  } else {
+    html+=`<div class="lp-row"><span class="lp-dot green"></span><strong style="color:var(--green);">BRACKET PURO</strong> de ${n} — sin repechaje (${c.rondas} rondas)</div>`;
+  }
+  const needs=n, has=sel;
+  const diff=needs-has;
+  html+=`<div class="lp-row" style="margin-top:.4rem;"><span class="lp-dot" style="background:${diff===0?'var(--green)':diff>0?'var(--red)':'var(--accent)'}"></span>`;
+  if(diff===0)       html+=`<span style="color:var(--green);">✓ Exactamente ${needs} pilotos seleccionados</span>`;
+  else if(diff>0)    html+=`<span style="color:var(--red);">Faltan ${diff} piloto${diff>1?'s':''} (necesitás ${needs})</span>`;
+  else               html+=`<span style="color:var(--accent);">Tenés ${-diff} piloto${-diff>1?'s':''} de más (máximo ${needs})</span>`;
+  html+=`</div></div>`;
+  box.innerHTML=html;
+}
+
+function openAddLlave(){
+  const {jugadores}=load();
+  if(!jugadores.length){toast('Primero registrá pilotos.','err');return;}
+  document.getElementById('lv-nombre').value='';
+  document.getElementById('lv-fecha').value=new Date().toLocaleDateString('es-AR');
+  document.getElementById('lv-clase').value='';
+  document.getElementById('lv-n').value='16';
+  renderChips('lv','');
+  updateLlavePreview();
+  openModal('modal-llave');
+}
+
+function saveLlave(){
+  const nombre =document.getElementById('lv-nombre').value.trim();
+  const fecha  =document.getElementById('lv-fecha').value.trim();
+  const clase  =document.getElementById('lv-clase').value;
+  const n      =parseInt(document.getElementById('lv-n').value);
+  const selected=getSelectedChips('lv');
+  if(!nombre){toast('Poné un nombre.','err');return;}
+  if(selected.length!==n){toast(`Seleccioná exactamente ${n} pilotos (tenés ${selected.length}).`,'err');return;}
+
+  const c=calcLlave(n);
+  const shuffled=[...selected].sort(()=>Math.random()-.5);
+  const state=load();
+
+  // Update torneo count
+  selected.forEach(pid=>{
+    const idx=state.jugadores.findIndex(j=>j.id===pid);
+    if(idx>=0) state.jugadores[idx].torneos=(state.jugadores[idx].torneos||0)+1;
+  });
+
+  let llave;
+  if(!c.hasRep){
+    // Pure bracket
+    llave={
+      id:uid(), nombre, fecha, clase:clase||'LIBRE', n,
+      estado:'activo', jugadores:selected,
+      hasRep:false,
+      repechajeMatches:[],
+      bracketRondas:generarBracketSimple(shuffled),
+      campeon:null
+    };
+  } else {
+    // With repechaje
+    const repechajeJugadores=shuffled.slice(0,c.repPlayers);
+    const directJugadores   =shuffled.slice(c.repPlayers);
+
+    // Build repechaje matches
+    const repechajeMatches=[];
+    for(let i=0;i<c.repMatches;i++){
+      repechajeMatches.push({
+        id:`rep${i}`, repIdx:i,
+        j1:repechajeJugadores[i*2], j2:repechajeJugadores[i*2+1],
+        tiempo1:null, tiempo2:null, ganador:null, dq1:false, dq2:false, estado:'pendiente'
+      });
+    }
+
+    // Build main bracket round 0 slots
+    // Interleave: direct players and repechaje winner slots
+    // Place direct players first, then repechaje winners alternated
+    // For fairness: distribute repechaje winners across the bracket
+    const mainSize=c.mainSize;
+    const numRondas=c.rondas;
+
+    // Create slot assignment for round 0 (mainSize players)
+    // We interleave direct and rep winners so they're spread
+    const slots=[];
+    let di=0, ri=0;
+    // Create interleaved arrangement
+    const repInterval=Math.floor(mainSize/(c.repMatches));
+    for(let i=0;i<mainSize;i++){
+      if(ri<c.repMatches && (i+1)%repInterval===0 && slots.filter(s=>s.type==='rep').length<c.repMatches){
+        slots.push({type:'rep',repIdx:ri++});
+      } else if(di<directJugadores.length){
+        slots.push({type:'direct',pid:directJugadores[di++]});
+      } else {
+        slots.push({type:'rep',repIdx:ri++});
+      }
+    }
+    // Fill any remaining
+    while(di<directJugadores.length) slots.push({type:'direct',pid:directJugadores[di++]});
+    while(ri<c.repMatches) slots.push({type:'rep',repIdx:ri++});
+
+    // Build bracket
+    const bracketRondas=[];
+    for(let r=0;r<numRondas;r++){
+      const matchCount=mainSize/Math.pow(2,r+1);
+      const ronda=[];
+      for(let m=0;m<matchCount;m++){
+        const match={id:`r${r}m${m}`,j1:null,j2:null,j1RepIdx:null,j2RepIdx:null,tiempo1:null,tiempo2:null,ganador:null,dq1:false,dq2:false,estado:'pendiente'};
+        if(r===0){
+          const s1=slots[m*2], s2=slots[m*2+1];
+          if(s1.type==='direct'){ match.j1=s1.pid; } else { match.j1RepIdx=s1.repIdx; }
+          if(s2.type==='direct'){ match.j2=s2.pid; } else { match.j2RepIdx=s2.repIdx; }
+          // If both direct, check if they can start
+          if(match.j1&&match.j2) match.estado='pendiente';
+          else match.estado='esperando-rep';
+        }
+        ronda.push(match);
+      }
+      bracketRondas.push(ronda);
+    }
+    llave={
+      id:uid(), nombre, fecha, clase:clase||'LIBRE', n,
+      estado:'activo', jugadores:selected,
+      hasRep:true, repechajeMatches, bracketRondas, campeon:null
+    };
+  }
+
+  state.llaves.push(llave);
+  save(state);
+  toast(`✓ Llave "${nombre}" generada con ${n} pilotos`+(c.hasRep?` (${c.repMatches} repechajes)`:''),'ok');
+  closeModal('modal-llave');
+  renderLlaves();
+}
+
+function renderLlaves(){
+  const {llaves}=load();
+  const listView=document.getElementById('llaves-list-view');
+  const detailView=document.getElementById('llave-detail-view');
+  if(activeLlaveId){
+    listView.style.display='none';
+    detailView.style.display='block';
+    renderLlaveDetail();
+    return;
+  }
+  listView.style.display='';
+  detailView.style.display='none';
+  const el=document.getElementById('llaves-grid');
+  if(!llaves.length){
+    el.innerHTML=`<div class="empty"><div class="e-icon">🔑</div><p>Aún no hay llaves creadas.</p><button class="btn btn-purple" onclick="openAddLlave()">+ CREAR PRIMERA LLAVE</button></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="torneos-grid">${[...llaves].reverse().map(lv=>{
+    const bc=lv.estado==='finalizado'?'badge-done':'badge-active';
+    const bl=lv.estado==='finalizado'?'FINALIZADO':'EN CURSO';
+    const totalMain=lv.bracketRondas.reduce((a,r)=>a+r.filter(m=>m.estado!=='bye'&&m.estado!=='esperando-rep').length,0);
+    const doneMain =lv.bracketRondas.reduce((a,r)=>a+r.filter(m=>m.estado==='completado').length,0);
+    const doneRep  =lv.repechajeMatches.filter(m=>m.estado==='completado').length;
+    const totalRep =lv.repechajeMatches.length;
+    return `<div class="t-card" onclick="openLlaveDetail('${lv.id}')">
+      <div class="t-card-name">${lv.nombre}</div>
+      <div class="t-card-meta">
+        <span class="badge ${bc}">${bl}</span>
+        <span class="meta-pill">${TOPES[lv.clase]?.label||lv.clase}</span>
+        <span class="meta-pill">${lv.n} corredores</span>
+        ${lv.hasRep?`<span class="badge badge-rep">REP: ${doneRep}/${totalRep}</span>`:''}
+        <span class="meta-pill">BRACKET: ${doneMain}/${totalMain}</span>
+        ${lv.fecha?`<span class="meta-pill">${lv.fecha}</span>`:''}
+      </div>
+      ${lv.campeon?`<div style="margin-top:.8rem;font-family:var(--mono);font-size:.75rem;color:var(--accent);">🏆 ${getJugadorNombre(lv.campeon)}</div>`:''}
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function openLlaveDetail(id){
+  activeLlaveId=id;
+  renderLlaves();
+}
+function closeLlaveDetail(){
+  activeLlaveId=null;
+  renderLlaves();
+}
+
+function renderLlaveDetail(){
+  if(!activeLlaveId) return;
+  const {llaves}=load();
+  const lv=llaves.find(x=>x.id===activeLlaveId);
+  if(!lv){closeLlaveDetail();return;}
+
+  const totalRep=lv.repechajeMatches.length;
+  const doneRep =lv.repechajeMatches.filter(m=>m.estado==='completado').length;
+  const totalMain=lv.bracketRondas.reduce((a,r)=>a+r.filter(m=>m.estado!=='bye'&&m.estado!=='esperando-rep').length,0);
+  const doneMain =lv.bracketRondas.reduce((a,r)=>a+r.filter(m=>m.estado==='completado').length,0);
+  const bc=lv.estado==='finalizado'?'badge-done':'badge-active';
+  const bl=lv.estado==='finalizado'?'FINALIZADO':'EN CURSO';
+
+  let html=`<div class="t-detail-head">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div><div class="t-detail-name">${lv.nombre}</div>
+      <div class="t-detail-meta">
+        <span class="badge ${bc}">${bl}</span>
+        <span class="meta-pill">${TOPES[lv.clase]?.label||lv.clase}</span>
+        <span class="meta-pill">${lv.n} corredores</span>
+        ${lv.hasRep?`<span class="badge badge-rep">REPECHAJE ${doneRep}/${totalRep}</span>`:''}
+        <span class="meta-pill">BRACKET ${doneMain}/${totalMain}</span>
+        ${lv.fecha?`<span class="meta-pill">📅 ${lv.fecha}</span>`:''}
+        ${lv.clase!=='LIBRE'&&TOPES[lv.clase]?.tope?`<span class="meta-pill">TOPE ≥ ${TOPES[lv.clase].tope}"</span>`:''}
+      </div></div>
+      <button class="btn btn-danger btn-sm" onclick="confirmDelete('llave','${lv.id}','${lv.nombre}')">ELIMINAR</button>
+    </div>
+  </div>`;
+
+  if(lv.campeon) html+=`<div style="background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:.5rem;">🏆</div>
+    <div style="font-family:var(--mono);font-size:.75rem;color:var(--accent);letter-spacing:.3em;margin-bottom:.4rem;">CAMPEÓN DE LA LLAVE</div>
+    <div style="font-family:var(--display);font-size:2.5rem;letter-spacing:.1em;">${getJugadorNombre(lv.campeon)}</div>
+  </div>`;
+
+  // ─── REPECHAJE SECTION ───
+  if(lv.hasRep){
+    const repDone=lv.repechajeMatches.every(m=>m.estado==='completado');
+    html+=`<div class="rep-section-title">🟣 REPECHAJE CLASIFICATORIO — ${doneRep}/${totalRep} carreras completadas</div>
+    <div class="rep-section-body">
+      <p style="font-family:var(--mono);font-size:.72rem;color:var(--text2);margin-bottom:1rem;">
+        Los ganadores de cada repechaje avanzan al bracket principal. Los perdedores quedan eliminados.
+      </p>
+      <div class="rep-matches-grid">
+        ${lv.repechajeMatches.map((m,mi)=>{
+          const canClick=m.estado==='pendiente';
+          const p1c=m.estado==='completado'?(m.ganador===m.j1?'winner':'loser'):'';
+          const p2c=m.estado==='completado'?(m.ganador===m.j2?'winner':'loser'):'';
+          const t1=m.tiempo1!=null?m.tiempo1.toFixed(3)+'"':'';
+          const t2=m.tiempo2!=null?m.tiempo2.toFixed(3)+'"':'';
+          // Find which bracket slot this rep winner fills
+          const tgt=findRepTargetSlot(lv,mi);
+          return `<div class="b-match rep-match${canClick?' clickable':''}" ${canClick?`onclick="openResultLlave('${lv.id}','rep',${mi})"`:''}>
+            <div class="b-match-num rep-num">REPECHAJE #${mi+1}${tgt?` → ${tgt}`:''}${canClick?' · CLICK P/ REGISTRAR':''}</div>
+            <div class="b-player ${p1c}">
+              <span class="b-player-name">${m.ganador===m.j1?'🏁 ':''}${getJugadorNombre(m.j1)}</span>
+              ${t1?`<span class="b-player-time ${m.dq1?'dq':''}">${m.dq1?'DQ ':''} ${t1}</span>`:''}
+            </div>
+            <div class="b-player ${p2c}">
+              <span class="b-player-name">${m.ganador===m.j2?'🏁 ':''}${getJugadorNombre(m.j2)}</span>
+              ${t2?`<span class="b-player-time ${m.dq2?'dq':''}">${m.dq2?'DQ ':''} ${t2}</span>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${repDone?`<p style="font-family:var(--mono);font-size:.75rem;color:var(--green);margin-top:1rem;">✓ Todos los repechajes completados — bracket principal desbloqueado</p>`:''}
+    </div>`;
+
+    // Arrow separator
+    html+=`<div class="rep-separator"><div class="rep-sep-line"></div><div class="rep-sep-label">↓ BRACKET PRINCIPAL</div><div class="rep-sep-line"></div></div>`;
+  }
+
+  // ─── BRACKET PRINCIPAL ───
+  html+=`<div class="bracket-scroll"><div class="bracket">${renderBracketColsLlave(lv)}</div></div>`;
+
+  document.getElementById('llave-detail-content').innerHTML=html;
+}
+
+function findRepTargetSlot(lv, repIdx){
+  // Find which round-0 match and slot this repIdx winner fills
+  for(let mi=0;mi<lv.bracketRondas[0].length;mi++){
+    const m=lv.bracketRondas[0][mi];
+    if(m.j1RepIdx===repIdx) return `R1-C${mi+1} lado A`;
+    if(m.j2RepIdx===repIdx) return `R1-C${mi+1} lado B`;
+  }
+  return null;
+}
+
+function renderBracketColsLlave(lv){
+  const numRondas=lv.bracketRondas.length;
+  let html='';
+  lv.bracketRondas.forEach((ronda,ri)=>{
+    const name=roundName(ri,numRondas);
+    html+=`<div class="b-round"><div class="b-round-title">${name}</div><div class="b-matches">`;
+    ronda.forEach((m,mi)=>{
+      const waiting=m.estado==='esperando-rep';
+      const canClick=!waiting && m.estado==='pendiente' && m.j1 && m.j2;
+      const clickAttr=canClick?`class="b-match clickable" onclick="openResultLlave('${lv.id}','main',${ri},${mi})"`:
+                      waiting?'class="b-match" style="opacity:.6"':'class="b-match"';
+
+      const p1name=m.j1?getJugadorNombre(m.j1):null;
+      const p2name=m.j2?getJugadorNombre(m.j2):null;
+      let p1c='',p2c='';
+      if(m.estado==='completado'||m.estado==='bye'){
+        p1c=m.ganador===m.j1?'winner':(m.j1?'loser':'');
+        p2c=m.ganador===m.j2?'winner':(m.j2?'loser':'');
+      }
+      const t1=m.tiempo1!=null?m.tiempo1.toFixed(3)+'"':'';
+      const t2=m.tiempo2!=null?m.tiempo2.toFixed(3)+'"':'';
+
+      // Pending repechaje slot label
+      const rep1Label=m.j1RepIdx!=null&&!m.j1?`REP.#${m.j1RepIdx+1}`:null;
+      const rep2Label=m.j2RepIdx!=null&&!m.j2?`REP.#${m.j2RepIdx+1}`:null;
+
+      html+=`<div class="b-match-wrap"><div ${clickAttr}>
+        <div class="b-match-num">C${mi+1}${m.estado==='bye'?' · BYE':waiting?' · ESPERANDO REPECHAJE':canClick?' · CLICK P/ REGISTRAR':''}</div>
+        <div class="b-player ${p1c}">
+          <span class="b-player-name">${m.ganador===m.j1?'🏁 ':''}${p1name?p1name:rep1Label?`<span class="b-rep-pending">→ ${rep1Label}</span>`:'<span class="b-tbd">POR DEFINIR</span>'}</span>
+          ${t1?`<span class="b-player-time ${m.dq1?'dq':''}">${m.dq1?'DQ ':''} ${t1}</span>`:''}
+        </div>
+        ${m.j2!==null||rep2Label?
+          `<div class="b-player ${p2c}">
+            <span class="b-player-name">${m.ganador===m.j2?'🏁 ':''}${p2name?p2name:rep2Label?`<span class="b-rep-pending">→ ${rep2Label}</span>`:'<span class="b-tbd">POR DEFINIR</span>'}</span>
+            ${t2?`<span class="b-player-time ${m.dq2?'dq':''}">${m.dq2?'DQ ':''} ${t2}</span>`:''}
+          </div>`:
+          `<div class="b-bye">BYE — avanza automáticamente</div>`
+        }
+      </div></div>`;
+    });
+    html+=`</div></div>`;
+  });
+  return html;
+}
+
+function roundName(ri,total){
+  if(ri===total-1) return 'FINAL';
+  if(ri===total-2&&total>2) return 'SEMIFINAL';
+  if(ri===total-3&&total>3) return 'CUARTOS';
+  return `RONDA ${ri+1}`;
+}
+
+// ─── Result modal for Llave ───────────────────────────────────────
+function openResultLlave(llaveId, type, ...args){
+  const {llaves}=load();
+  const lv=llaves.find(x=>x.id===llaveId);
+  if(!lv) return;
+
+  document.getElementById('r-context-type').value='llave-'+type;
+  document.getElementById('r-parent-id').value=llaveId;
+  document.getElementById('r-modal-title').textContent=type==='rep'?'REGISTRAR REPECHAJE':'REGISTRAR RESULTADO';
+  document.getElementById('r-time1').value='';
+  document.getElementById('r-time2').value='';
+  document.getElementById('r-warn1').style.display='none';
+  document.getElementById('r-warn2').style.display='none';
+  document.getElementById('r-preview').textContent='';
+
+  const tope=TOPES[lv.clase]?.tope;
+  document.getElementById('r-clase-info').innerHTML=
+    tope?`🏁 ${TOPES[lv.clase].label} · TOPE ≥ <span style="color:var(--accent)">${tope}"</span> · Si tiempo &lt; ${tope}" → DQ`
+        :`🏁 ${TOPES[lv.clase]?.label||lv.clase} · SIN TOPE`;
+
+  if(type==='rep'){
+    document.getElementById('r-ronda-idx').value=args[0]; // repIdx
+    document.getElementById('r-match-idx').value=-1;
+    const m=lv.repechajeMatches[args[0]];
+    document.getElementById('r-name1').textContent=getJugadorNombre(m.j1);
+    document.getElementById('r-name2').textContent=getJugadorNombre(m.j2);
+  } else {
+    document.getElementById('r-ronda-idx').value=args[0];
+    document.getElementById('r-match-idx').value=args[1];
+    const m=lv.bracketRondas[args[0]][args[1]];
+    document.getElementById('r-name1').textContent=getJugadorNombre(m.j1);
+    document.getElementById('r-name2').textContent=getJugadorNombre(m.j2);
+  }
+
+  ['r-time1','r-time2'].forEach(id=>{
+    document.getElementById(id).oninput=()=>previewResult(llaveId,'llave');
+  });
+
+  openModal('modal-result');
+}
+
+// ─── Shared result modal for Torneo ──────────────────────────────
+function openResultTorneo(torneoId, ri, mi){
+  const {torneos}=load();
+  const t=torneos.find(x=>x.id===torneoId);
+  const m=t.bracket.rondas[ri][mi];
+  const tope=TOPES[t.clase]?.tope;
+  document.getElementById('r-context-type').value='torneo';
+  document.getElementById('r-parent-id').value=torneoId;
+  document.getElementById('r-ronda-idx').value=ri;
+  document.getElementById('r-match-idx').value=mi;
+  document.getElementById('r-modal-title').textContent='REGISTRAR RESULTADO';
+  document.getElementById('r-name1').textContent=getJugadorNombre(m.j1);
+  document.getElementById('r-name2').textContent=getJugadorNombre(m.j2);
+  document.getElementById('r-time1').value='';
+  document.getElementById('r-time2').value='';
+  document.getElementById('r-warn1').style.display='none';
+  document.getElementById('r-warn2').style.display='none';
+  document.getElementById('r-preview').textContent='';
+  document.getElementById('r-clase-info').innerHTML=
+    tope?`🏁 ${TOPES[t.clase].label} · TOPE ≥ <span style="color:var(--accent)">${tope}"</span> · Si tiempo &lt; ${tope}" → DQ`
+        :`🏁 ${TOPES[t.clase]?.label||t.clase} · SIN TOPE`;
+  ['r-time1','r-time2'].forEach(id=>{
+    document.getElementById(id).oninput=()=>previewResult(torneoId,'torneo');
+  });
+  openModal('modal-result');
+}
+
+function previewResult(parentId, parentType){
+  let clase='LIBRE';
+  const state=load();
+  if(parentType==='torneo') clase=(state.torneos.find(x=>x.id===parentId)||{}).clase||'LIBRE';
+  else clase=(state.llaves.find(x=>x.id===parentId)||{}).clase||'LIBRE';
+  const tope=TOPES[clase]?.tope;
+  const t1r=document.getElementById('r-time1').value;
+  const t2r=document.getElementById('r-time2').value;
+  const t1=t1r!==''?parseFloat(t1r):null;
+  const t2=t2r!==''?parseFloat(t2r):null;
+  const w1=document.getElementById('r-warn1');
+  const w2=document.getElementById('r-warn2');
+  if(tope!==null){
+    if(t1!==null&&t1<tope){w1.textContent=`⚠ ${t1.toFixed(3)}" < ${tope}" → CRUZÓ EL TOPE → DQ`;w1.style.display='';}else w1.style.display='none';
+    if(t2!==null&&t2<tope){w2.textContent=`⚠ ${t2.toFixed(3)}" < ${tope}" → CRUZÓ EL TOPE → DQ`;w2.style.display='';}else w2.style.display='none';
+  }
+  if(t1===null||t2===null){document.getElementById('r-preview').textContent='';return;}
+  const dq1=tope!==null&&t1<tope, dq2=tope!==null&&t2<tope;
+  let msg='';
+  if(dq1&&dq2){const d1=Math.abs(t1-tope),d2=Math.abs(t2-tope);const w=d1<=d2?document.getElementById('r-name1').textContent:document.getElementById('r-name2').textContent;msg=`⚠ Ambos DQ → Gana quien más se acercó al tope: ${w}`;}
+  else if(dq1) msg=`→ Ganador: ${document.getElementById('r-name2').textContent} (rival DQ)`;
+  else if(dq2) msg=`→ Ganador: ${document.getElementById('r-name1').textContent} (rival DQ)`;
+  else {const w=t1<=t2?document.getElementById('r-name1').textContent:document.getElementById('r-name2').textContent;msg=`→ Ganador: ${w} (${Math.min(t1,t2).toFixed(3)}")` ;}
+  document.getElementById('r-preview').textContent=msg;
+}
+
+function saveResult(){
+  const contextType=document.getElementById('r-context-type').value;
+  const parentId   =document.getElementById('r-parent-id').value;
+  const ri         =parseInt(document.getElementById('r-ronda-idx').value);
+  const mi         =parseInt(document.getElementById('r-match-idx').value);
+  const t1r=document.getElementById('r-time1').value;
+  const t2r=document.getElementById('r-time2').value;
+  if(t1r===''||t2r===''){toast('Ingresá ambos tiempos.','err');return;}
+  const t1=parseFloat(t1r),t2=parseFloat(t2r);
+  if(isNaN(t1)||isNaN(t2)||t1<=0||t2<=0){toast('Tiempos inválidos.','err');return;}
+
+  if(contextType==='torneo') saveResultTorneo(parentId,ri,mi,t1,t2);
+  else if(contextType==='llave-rep')  saveResultLlaveRep(parentId,ri,t1,t2);
+  else if(contextType==='llave-main') saveResultLlaveMain(parentId,ri,mi,t1,t2);
+}
+
+function calcWinner(j1,j2,t1,t2,tope){
+  const dq1=tope!==null&&t1<tope;
+  const dq2=tope!==null&&t2<tope;
+  let ganador;
+  if(dq1&&dq2){ganador=Math.abs(t1-tope)<=Math.abs(t2-tope)?j1:j2;}
+  else if(dq1) ganador=j2;
+  else if(dq2) ganador=j1;
+  else         ganador=t1<=t2?j1:j2;
+  return {ganador,dq1,dq2};
+}
+
+function updatePlayerStats(state,winnerId,loserId,t1,t2,j1Id,tope){
+  [[j1Id,t1],[winnerId===j1Id?j1Id:(j1Id===winnerId?null:j1Id),t1]].forEach(()=>{});
+  // Update best times
+  const pIds=[j1Id,loserId===j1Id?null:loserId].filter(Boolean);
+  // simpler:
+  const pairs=[[j1Id,t1],[j1Id===winnerId?loserId:j1Id,t2]];
+  // Actually let me do it directly:
+}
+
+function applyPlayerResult(state, winnerId, loserId, winnerTime, loserTime, tope){
+  const wi=state.jugadores.findIndex(j=>j.id===winnerId);
+  const li=state.jugadores.findIndex(j=>j.id===loserId);
+  if(wi>=0){
+    state.jugadores[wi].victorias=(state.jugadores[wi].victorias||0)+1;
+    const wt=winnerTime;
+    if(TOPES[state.jugadores[wi]?.clase]?.tope==null||wt>=(tope||0)){
+      if(state.jugadores[wi].mejorTiempo==null||wt<state.jugadores[wi].mejorTiempo) state.jugadores[wi].mejorTiempo=wt;
+    }
+  }
+  if(li>=0){
+    state.jugadores[li].derrotas=(state.jugadores[li].derrotas||0)+1;
+    const lt=loserTime;
+    if(state.jugadores[li].mejorTiempo==null||lt<state.jugadores[li].mejorTiempo) state.jugadores[li].mejorTiempo=lt;
+  }
+}
+
+function saveResultTorneo(torneoId,ri,mi,t1,t2){
+  const state=load();
+  const t=state.torneos.find(x=>x.id===torneoId);
+  const m=t.bracket.rondas[ri][mi];
+  const tope=TOPES[t.clase]?.tope||null;
+  const {ganador,dq1,dq2}=calcWinner(m.j1,m.j2,t1,t2,tope);
+  m.tiempo1=t1;m.tiempo2=t2;m.ganador=ganador;m.dq1=dq1;m.dq2=dq2;m.estado='completado';
+  const loserId=ganador===m.j1?m.j2:m.j1;
+  const winnerTime=ganador===m.j1?t1:t2;
+  const loserTime=ganador===m.j1?t2:t1;
+  applyPlayerResult(state,ganador,loserId,winnerTime,loserTime,tope);
+  // Propagate
+  if(ri+1<t.bracket.rondas.length){
+    const next=t.bracket.rondas[ri+1][Math.floor(mi/2)];
+    if(mi%2===0) next.j1=ganador; else next.j2=ganador;
+    if(next.j1&&next.j2) next.estado='pendiente';
+  } else {
+    t.estado='finalizado'; t.campeon=ganador;
+  }
+  save(state); closeModal('modal-result'); renderTorneoDetail();
+  toast(`🏁 ${getJugadorNombre(ganador)} avanza`,'ok');
+}
+
+function saveResultLlaveRep(llaveId,repIdx,t1,t2){
+  const state=load();
+  const lv=state.llaves.find(x=>x.id===llaveId);
+  const m=lv.repechajeMatches[repIdx];
+  const tope=TOPES[lv.clase]?.tope||null;
+  const {ganador,dq1,dq2}=calcWinner(m.j1,m.j2,t1,t2,tope);
+  m.tiempo1=t1;m.tiempo2=t2;m.ganador=ganador;m.dq1=dq1;m.dq2=dq2;m.estado='completado';
+  const loserId=ganador===m.j1?m.j2:m.j1;
+  applyPlayerResult(state,ganador,loserId,ganador===m.j1?t1:t2,ganador===m.j1?t2:t1,tope);
+  // Inject winner into bracket round 0
+  for(let mi2=0;mi2<lv.bracketRondas[0].length;mi2++){
+    const bm=lv.bracketRondas[0][mi2];
+    if(bm.j1RepIdx===repIdx) bm.j1=ganador;
+    if(bm.j2RepIdx===repIdx) bm.j2=ganador;
+    // Check if match is now ready
+    if(bm.estado==='esperando-rep'){
+      const j1ready=bm.j1!==null||(bm.j1RepIdx!==null&&lv.repechajeMatches[bm.j1RepIdx]?.estado==='completado');
+      const j2ready=bm.j2!==null||(bm.j2RepIdx!==null&&lv.repechajeMatches[bm.j2RepIdx]?.estado==='completado');
+      if(j1ready&&j2ready) bm.estado='pendiente';
+    }
+  }
+  save(state); closeModal('modal-result'); renderLlaveDetail();
+  toast(`🟣 Repechaje: ${getJugadorNombre(ganador)} avanza al bracket`,'ok');
+}
+
+function saveResultLlaveMain(llaveId,ri,mi,t1,t2){
+  const state=load();
+  const lv=state.llaves.find(x=>x.id===llaveId);
+  const m=lv.bracketRondas[ri][mi];
+  const tope=TOPES[lv.clase]?.tope||null;
+  const {ganador,dq1,dq2}=calcWinner(m.j1,m.j2,t1,t2,tope);
+  m.tiempo1=t1;m.tiempo2=t2;m.ganador=ganador;m.dq1=dq1;m.dq2=dq2;m.estado='completado';
+  const loserId=ganador===m.j1?m.j2:m.j1;
+  applyPlayerResult(state,ganador,loserId,ganador===m.j1?t1:t2,ganador===m.j1?t2:t1,tope);
+  if(ri+1<lv.bracketRondas.length){
+    const next=lv.bracketRondas[ri+1][Math.floor(mi/2)];
+    if(mi%2===0) next.j1=ganador; else next.j2=ganador;
+    if(next.j1&&next.j2) next.estado='pendiente';
+  } else {
+    lv.estado='finalizado'; lv.campeon=ganador;
+  }
+  save(state); closeModal('modal-result'); renderLlaveDetail();
+  toast(`🏁 ${getJugadorNombre(ganador)} avanza`,'ok');
+}
+
+// ─── Shared bracket renderer for Torneos ────────────────────────
+function renderBracketCols(rondas, type, parentId, clase){
+  const numRondas=rondas.length;
+  let html='';
+  rondas.forEach((ronda,ri)=>{
+    html+=`<div class="b-round"><div class="b-round-title">${roundName(ri,numRondas)}</div><div class="b-matches">`;
+    ronda.forEach((m,mi)=>{
+      const canClick=m.estado==='pendiente'&&m.j1&&m.j2;
+      const clickAttr=canClick?`class="b-match clickable" onclick="openResultTorneo('${parentId}',${ri},${mi})"`:
+                              `class="b-match"`;
+      const p1c=m.estado==='completado'||m.estado==='bye'?(m.ganador===m.j1?'winner':(m.j1?'loser':'')):'';
+      const p2c=m.estado==='completado'||m.estado==='bye'?(m.ganador===m.j2?'winner':(m.j2?'loser':'')):'';
+      const t1=m.tiempo1!=null?m.tiempo1.toFixed(3)+'"':'';
+      const t2=m.tiempo2!=null?m.tiempo2.toFixed(3)+'"':'';
+      html+=`<div class="b-match-wrap"><div ${clickAttr}>
+        <div class="b-match-num">C${mi+1}${m.estado==='bye'?' · BYE':canClick?' · CLICK P/ REGISTRAR':''}</div>
+        <div class="b-player ${p1c}">
+          <span class="b-player-name">${m.ganador===m.j1?'🏁 ':''}${m.j1?getJugadorNombre(m.j1):'<span class="b-tbd">POR DEFINIR</span>'}</span>
+          ${t1?`<span class="b-player-time ${m.dq1?'dq':''}">${m.dq1?'DQ ':''} ${t1}</span>`:''}
+        </div>
+        ${m.j2!==null?
+          `<div class="b-player ${p2c}">
+            <span class="b-player-name">${m.ganador===m.j2?'🏁 ':''}${m.j2?getJugadorNombre(m.j2):'<span class="b-tbd">POR DEFINIR</span>'}</span>
+            ${t2?`<span class="b-player-time ${m.dq2?'dq':''}">${m.dq2?'DQ ':''} ${t2}</span>`:''}
+          </div>`:
+          `<div class="b-bye">BYE — avanza automáticamente</div>`
+        }
+      </div></div>`;
+    });
+    html+=`</div></div>`;
+  });
+  return html;
+}
+
+// ═════════════════════════════ STATS ═════════════════════════════
+function renderStats(){
+  const {jugadores,torneos,llaves}=load();
+  const el=document.getElementById('stats-content');
+  const totalCarreras=jugadores.reduce((a,j)=>a+(j.victorias||0)+(j.derrotas||0),0);
+  let html=`<div class="stat-row">
+    <div class="stat-card"><div class="stat-val">${jugadores.length}</div><div class="stat-lbl">PILOTOS</div></div>
+    <div class="stat-card"><div class="stat-val">${torneos.length}</div><div class="stat-lbl">TORNEOS</div></div>
+    <div class="stat-card"><div class="stat-val">${llaves.length}</div><div class="stat-lbl">LLAVES</div></div>
+    <div class="stat-card"><div class="stat-val">${torneos.filter(t=>t.estado==='finalizado').length+llaves.filter(l=>l.estado==='finalizado').length}</div><div class="stat-lbl">FINALIZADOS</div></div>
+    <div class="stat-card"><div class="stat-val">${totalCarreras}</div><div class="stat-lbl">CARRERAS</div></div>
+  </div>`;
+  const ranked=[...jugadores].sort((a,b)=>{
+    const va=a.victorias||0,vb=b.victorias||0;
+    if(vb!==va) return vb-va;
+    const ra=va+(a.derrotas||0),rb=vb+(b.derrotas||0);
+    const wa=ra?va/ra:0,wb=rb?vb/rb:0;
+    return wb-wa;
+  });
+  html+=`<div class="s-title" style="font-size:1.4rem;margin-bottom:1rem;">RANKING DE PILOTOS</div>
+  <div class="table-wrap"><table><thead><tr><th>#</th><th>PILOTO</th><th>CLASE</th><th>V</th><th>D</th><th>%</th><th>MEJOR TIEMPO</th><th>TORNEOS</th></tr></thead><tbody>
+  ${ranked.map((j,i)=>{
+    const total=(j.victorias||0)+(j.derrotas||0);
+    const pct=total>0?((j.victorias||0)/total*100).toFixed(1)+'%':'—';
+    const medal=i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':'';
+    const tope=TOPES[j.clase]?.tope;
+    const isFast=tope!==null&&j.mejorTiempo!=null&&j.mejorTiempo<tope;
+    return `<tr class="rank-${i+1}"><td class="rank-num">${medal}${i+1}</td>
+    <td><strong>${j.username}</strong></td>
+    <td><span class="badge badge-clase">${TOPES[j.clase]?.label||j.clase}</span></td>
+    <td style="color:var(--green);font-family:var(--mono);">${j.victorias||0}</td>
+    <td style="color:var(--red);font-family:var(--mono);">${j.derrotas||0}</td>
+    <td style="font-family:var(--mono);">${pct}</td>
+    <td><span class="${isFast?'tiempo-dq':'tiempo-val'}">${j.mejorTiempo!=null?j.mejorTiempo.toFixed(3)+'"':'—'}</span></td>
+    <td style="font-family:var(--mono);">${j.torneos||0}</td></tr>`;
+  }).join('')}
+  </tbody></table></div>`;
+  // Records per class
+  html+=`<div class="divider"></div><div class="s-title" style="font-size:1.4rem;margin-bottom:1rem;">RÉCORDS POR CLASE</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;">`;
+  Object.entries(TOPES).forEach(([key,info])=>{
+    const inClass=jugadores.filter(j=>j.clase===key&&j.mejorTiempo!=null);
+    const valid=inClass.filter(j=>info.tope===null||j.mejorTiempo>=info.tope);
+    const best=valid.sort((a,b)=>a.mejorTiempo-b.mejorTiempo)[0];
+    html+=`<div class="stat-card" style="text-align:left;">
+      <div style="font-family:var(--display);font-size:1.1rem;letter-spacing:.1em;margin-bottom:.2rem;">${info.label}</div>
+      ${info.tope?`<div style="font-family:var(--mono);font-size:.65rem;color:var(--text3);margin-bottom:.5rem;">TOPE ≥ ${info.tope}"</div>`:'<div style="height:.5rem"></div>'}
+      ${best?`<div style="font-family:var(--display);font-size:1.8rem;color:var(--accent);">${best.mejorTiempo.toFixed(3)}"</div>
+              <div style="font-size:.85rem;color:var(--text2);margin-top:.2rem;">${best.username}</div>`:
+              `<div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);">SIN DATOS</div>`}
+    </div>`;
+  });
+  html+=`</div>`;
+  // Champions
+  const camps=[...torneos,...llaves].filter(x=>x.campeon);
+  if(camps.length){
+    html+=`<div class="divider"></div><div class="s-title" style="font-size:1.4rem;margin-bottom:1rem;">HISTORIAL DE CAMPEONES</div>
+    <div class="table-wrap"><table><thead><tr><th>NOMBRE</th><th>TIPO</th><th>CLASE</th><th>CAMPEÓN</th><th>FECHA</th></tr></thead><tbody>
+    ${[...camps].reverse().map(x=>
+      `<tr><td><strong>${x.nombre}</strong></td>
+      <td><span class="badge ${x.bracketRondas?'badge-rep':'badge-done'}">${x.bracketRondas?'LLAVE':'TORNEO'}</span></td>
+      <td><span class="badge badge-clase">${TOPES[x.clase]?.label||x.clase}</span></td>
+      <td style="color:var(--accent);">🏆 ${getJugadorNombre(x.campeon)}</td>
+      <td style="font-family:var(--mono);color:var(--text2);">${x.fecha||'—'}</td></tr>`
+    ).join('')}
+    </tbody></table></div>`;
+  }
+  el.innerHTML=html;
+}
+
+// ═════════════════════════════ INIT ══════════════════════════════
+renderJugadores();
+renderTorneos();
+renderLlaves();
+</script>
+</body>
+</html>
