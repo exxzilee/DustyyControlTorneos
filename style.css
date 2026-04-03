@@ -190,6 +190,9 @@ body.guest-mode .rep-match.clickable:hover{border-color:rgba(191,90,242,.25)}
 /* ── CORRECT BAR ── */
 .b-correct-bar{font-family:var(--mono);font-size:.6rem;text-align:center;padding:.2rem;background:rgba(10,132,255,.08);border-top:1px solid rgba(10,132,255,.2);color:var(--blue);cursor:pointer;letter-spacing:.08em;transition:background .2s}
 .b-correct-bar:hover{background:rgba(10,132,255,.18)}
+.b-advance-bar{background:rgba(52,199,89,.1)!important;border-top:1px solid rgba(52,199,89,.3)!important;color:var(--green)!important;font-size:.65rem!important;padding:.3rem!important;}
+.b-advance-bar:hover{background:rgba(52,199,89,.22)!important;}
+
 
 /* ── INSCRIPTION ROWS ── */
 .inscripcion-row{display:flex;align-items:center;gap:.6rem;padding:.4rem .6rem;background:var(--bg3);border:1px solid var(--border);border-radius:4px;margin-bottom:.3rem;flex-wrap:wrap}
