@@ -432,22 +432,59 @@ function generarBracketSimple(ids){
     for(let m=0;m<mc;m++){
       const match={id:`r${r}m${m}`,j1:r===0?shuffled[m*2]:null,j2:r===0?shuffled[m*2+1]:null,
         tiempo1:null,tiempo2:null,ganador:null,dq1:false,dq2:false,estado:'pendiente'};
-      if(r===0&&match.j2===null){match.ganador=match.j1;match.estado='bye';}
+      // Handle BYE slots (null players) — including double-null
+      if(r===0){
+        if(!match.j1&&!match.j2)match.estado='bye'; // double BYE, ganador stays null
+        else if(match.j1&&!match.j2){match.ganador=match.j1;match.estado='bye';}
+        else if(match.j2&&!match.j1){match.ganador=match.j2;match.estado='bye';}
+      }
       ronda.push(match);
     }
     rondas.push(ronda);
   }
+  // Propagate BYE results using resolved flags to avoid confusing 'null from BYE' with 'null from pending'
   for(let r=0;r<rondas.length-1;r++){
     rondas[r].forEach((m,mi)=>{
-      if(m.ganador){
-        const next=rondas[r+1][Math.floor(mi/2)];
-        if(mi%2===0)next.j1=m.ganador;else next.j2=m.ganador;
-        if(next.j1&&!next.j2){next.ganador=next.j1;next.estado='bye';}
-        if(next.j2&&!next.j1){next.ganador=next.j2;next.estado='bye';}
+      if(m.estado!=='bye'&&!m.ganador)return; // skip unresolved pending matches
+      const next=rondas[r+1][Math.floor(mi/2)];
+      if(mi%2===0){next.j1=m.ganador;next._j1r=true;}
+      else{next.j2=m.ganador;next._j2r=true;}
+      if(next._j1r&&next._j2r){ // both sides resolved — determine BYE
+        if(!next.j1&&!next.j2)next.estado='bye';
+        else if(next.j1&&!next.j2){next.ganador=next.j1;next.estado='bye';}
+        else if(next.j2&&!next.j1){next.ganador=next.j2;next.estado='bye';}
       }
     });
   }
+  rondas.forEach(r=>r.forEach(m=>{delete m._j1r;delete m._j2r;}));
   return rondas;
+}
+
+// Advance a player that has no opponent (manual BYE fix for existing brackets)
+function advanceBye(type,parentId,ri,mi){
+  const state=load();
+  let evento,rondas,isLlave=false;
+  if(type==='torneo'){evento=state.torneos.find(x=>x.id===parentId);rondas=evento.bracket.rondas;}
+  else{evento=state.llaves.find(x=>x.id===parentId);rondas=evento.bracketRondas;isLlave=true;}
+  const m=rondas[ri][mi];
+  const realPlayer=m.j1||m.j2;
+  if(!realPlayer){toast('No hay jugador para avanzar.','err');return;}
+  m.ganador=realPlayer;m.estado='bye';m.tiempo1=null;m.tiempo2=null;
+  // Propagate to next round
+  if(ri+1<rondas.length){
+    const next=rondas[ri+1][Math.floor(mi/2)];
+    if(mi%2===0)next.j1=realPlayer;else next.j2=realPlayer;
+    if(next.j1&&next.j2)next.estado='pendiente';
+    else if(next.j1&&!next.j2){}  // wait for other side
+    else if(next.j2&&!next.j1){} // wait for other side
+  } else {
+    if(isLlave)evento.campeon=realPlayer;
+    else{evento.estado='finalizado';evento.campeon=realPlayer;}
+  }
+  logChange('BYE',`${getJugadorNombre(realPlayer)} avanzó automáticamente (sin rival)`);
+  save(state);
+  if(isLlave)renderLlaveDetail();else renderTorneoDetail();
+  toast(`🏁 ${getJugadorNombre(realPlayer)} avanza (sin rival)`,'ok');
 }
 
 function openTorneoDetail(id){
@@ -508,6 +545,9 @@ function renderBracketCols(rondas,type,parentId,evento){
     ronda.forEach((m,mi)=>{
       const canClick=m.estado==='pendiente'&&m.j1&&m.j2;
       const canCorrect=m.estado==='completado'&&!_isGuest;
+      // Detect "stuck" match: one real player, no opponent, not yet marked as BYE
+      const isStuck=m.estado==='pendiente'&&((m.j1&&!m.j2)||(m.j2&&!m.j1));
+      const advanceFn=type==='torneo'?`advanceBye('torneo','${parentId}',${ri},${mi})`:`advanceBye('llave','${parentId}',${ri},${mi})`;
       const clickFn=type==='torneo'?`openResultTorneo('${parentId}',${ri},${mi})`:`openResultLlave('${parentId}','main',${ri},${mi})`;
       const correctFn=type==='torneo'?`openCorrectTorneo('${parentId}',${ri},${mi})`:`openCorrectLlave('${parentId}','main',${ri},${mi})`;
       const clickAttr=canClick?`class="b-match clickable" onclick="${clickFn}"`:'class="b-match"';
@@ -515,11 +555,10 @@ function renderBracketCols(rondas,type,parentId,evento){
       const p2c=m.estado==='completado'||m.estado==='bye'?(m.ganador===m.j2?'winner':(m.j2?'loser':'')):'';
       const t1=m.tiempo1!=null?m.tiempo1.toFixed(3)+'"':'';
       const t2=m.tiempo2!=null?m.tiempo2.toFixed(3)+'"':'';
-      // Show DQ info per-pilot using inscription
       const ins1=m.j1?getInscripcion(evento,m.j1):null;
       const ins2=m.j2?getInscripcion(evento,m.j2):null;
       html+=`<div class="b-match-wrap"><div ${clickAttr}>
-        <div class="b-match-num">C${mi+1}${m.estado==='bye'?' · BYE':canClick?' · CLICK P/ REGISTRAR':''}</div>
+        <div class="b-match-num">C${mi+1}${m.estado==='bye'?' · BYE':isStuck?' · SIN RIVAL':canClick?' · CLICK P/ REGISTRAR':''}</div>
         <div class="b-player ${p1c}">
           <span class="b-player-name">${m.ganador===m.j1?'🏁 ':''}${m.j1?getJugadorNombre(m.j1):'<span class="b-tbd">POR DEFINIR</span>'}</span>
           ${ins1?`<span style="font-family:var(--mono);font-size:.55rem;color:var(--text3);">${TOPES[ins1.clase]?.label||''}</span>`:''}
@@ -530,6 +569,7 @@ function renderBracketCols(rondas,type,parentId,evento){
           ${ins2?`<span style="font-family:var(--mono);font-size:.55rem;color:var(--text3);">${TOPES[ins2.clase]?.label||''}</span>`:''}
           ${t2?`<span class="b-player-time ${m.dq2?'dq':''}">${m.dq2?'DQ ':''} ${t2}</span>`:''}
         </div>`:`<div class="b-bye">BYE — avanza automáticamente</div>`}
+        ${isStuck&&!_isGuest?`<div class="b-correct-bar b-advance-bar" onclick="event.stopPropagation();${advanceFn}">⚡ BYE — AVANZAR AL SIGUIENTE ROUND</div>`:''}
         ${canCorrect?`<div class="b-correct-bar admin-only" onclick="event.stopPropagation();${correctFn}">✏ CORREGIR</div>`:''}
       </div></div>`;
     });
