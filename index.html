@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PICADAS AR — Torneos</title>
+  <meta name="description" content="Gestor de torneos de picadas argentinas en Roblox. Registrá pilotos, armá brackets y seguí estadísticas en tiempo real.">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -51,23 +52,6 @@
         <button class="btn btn-primary admin-only" onclick="openAddPiloto()">+ AGREGAR PILOTO</button>
       </div>
     </div>
-    <details style="margin-bottom:1.5rem;">
-      <summary style="cursor:pointer;font-family:var(--mono);font-size:.8rem;color:var(--text2);letter-spacing:.1em;user-select:none;">▸ VER TOPES OFICIALES POR CLASE</summary>
-      <div class="topes-ref" style="margin-top:.8rem;">
-        <div class="tope-pill">C1 → <span>≥ 11.30"</span></div>
-        <div class="tope-pill">C2 → <span>≥ 10.80"</span></div>
-        <div class="tope-pill">C3 → <span>≥ 10.30"</span></div>
-        <div class="tope-pill">C4 → <span>≥ 9.70"</span></div>
-        <div class="tope-pill">C5 → <span>≥ 9.00"</span></div>
-        <div class="tope-pill">C6 → <span>≥ 8.50"</span></div>
-        <div class="tope-pill">C7 → <span>≥ 8.00"</span></div>
-        <div class="tope-pill">C8 → <span>≥ 7.60"</span></div>
-        <div class="tope-pill">C9 → <span>≥ 7.20"</span></div>
-        <div class="tope-pill">C10 → <span>≥ 6.70"</span></div>
-        <div class="tope-pill">L1 → <span>SIN TOPE</span></div>
-      </div>
-      <p style="font-family:var(--mono);font-size:.7rem;color:var(--text3);margin-top:.6rem;">⚠ Si corrés MÁS RÁPIDO que el tope → DESCALIFICADO (cruzás el tope)</p>
-    </details>
     <div id="jugadores-table" class="table-wrap"></div>
   </div>
 </section>
@@ -116,41 +100,16 @@
 
 <!-- ══════════════════════════════════════ MODALS ══ -->
 
-<!-- Add/Edit Piloto -->
+<!-- Add/Edit Piloto (solo username) -->
 <div class="overlay" id="modal-piloto">
   <div class="modal">
     <div class="modal-title" id="modal-piloto-title">NUEVO PILOTO</div>
     <input type="hidden" id="p-id">
-    <div class="grid-2">
-      <div class="form-row">
-        <label>Username Roblox</label>
-        <input type="text" id="p-username" placeholder="Ej: VelocidadMax99">
-      </div>
-      <div class="form-row">
-        <label>Vehículo</label>
-        <input type="text" id="p-vehiculo" placeholder="Ej: Torino 380 W">
-      </div>
-    </div>
     <div class="form-row">
-      <label>Clase Principal</label>
-      <select id="p-clase">
-        <option value="C1">CLASE 1 — Tope ≥ 11.30"</option>
-        <option value="C2">CLASE 2 — Tope ≥ 10.80"</option>
-        <option value="C3">CLASE 3 — Tope ≥ 10.30"</option>
-        <option value="C4">CLASE 4 — Tope ≥ 9.70"</option>
-        <option value="C5">CLASE 5 — Tope ≥ 9.00"</option>
-        <option value="C6">CLASE 6 — Tope ≥ 8.50"</option>
-        <option value="C7">CLASE 7 — Tope ≥ 8.00"</option>
-        <option value="C8">CLASE 8 — Tope ≥ 7.60"</option>
-        <option value="C9">CLASE 9 — Tope ≥ 7.20"</option>
-        <option value="C10">CLASE 10 — Tope ≥ 6.70"</option>
-        <option value="L1">LIBRE L1 — Sin tope</option>
-      </select>
+      <label>Username Roblox</label>
+      <input type="text" id="p-username" placeholder="Ej: VelocidadMax99">
     </div>
-    <div class="form-row">
-      <label>Mejor tiempo registrado (seg) — opcional</label>
-      <input type="number" id="p-mejor" placeholder="Ej: 11.45" step="0.001" min="0">
-    </div>
+    <div class="helper" style="margin-top:-.5rem;margin-bottom:1rem;">La clase y vehículo se registran al inscribirlo en cada torneo/llave.</div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-piloto')">CANCELAR</button>
       <button class="btn btn-primary" onclick="savePiloto()">GUARDAR</button>
@@ -158,9 +117,19 @@
   </div>
 </div>
 
+<!-- Historial de Piloto -->
+<div class="overlay" id="modal-piloto-historia">
+  <div class="modal" style="width:780px;">
+    <div id="historia-content"></div>
+    <div class="modal-actions" style="margin-top:1rem;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-piloto-historia')">CERRAR</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Torneo -->
 <div class="overlay" id="modal-torneo">
-  <div class="modal" style="width:600px;">
+  <div class="modal" style="width:680px;">
     <div class="modal-title">NUEVO TORNEO</div>
     <div class="grid-2">
       <div class="form-row">
@@ -173,21 +142,14 @@
       </div>
     </div>
     <div class="form-row">
-      <label>Clase</label>
-      <select id="t-clase" onchange="filterChips('t')">
-        <option value="">— Todas las clases —</option>
-        <option value="C1">CLASE 1</option><option value="C2">CLASE 2</option>
-        <option value="C3">CLASE 3</option><option value="C4">CLASE 4</option>
-        <option value="C5">CLASE 5</option><option value="C6">CLASE 6</option>
-        <option value="C7">CLASE 7</option><option value="C8">CLASE 8</option>
-        <option value="C9">CLASE 9</option><option value="C10">CLASE 10</option>
-        <option value="L1">LIBRE L1</option>
-      </select>
+      <label>Notas (opcional)</label>
+      <textarea id="t-notas" rows="2" placeholder="Ej: Solo Clase 3, semifinal pendiente para el sábado…"></textarea>
     </div>
     <div class="form-row">
       <label>Pilotos participantes <span id="t-chips-count" style="color:var(--accent);">(0)</span></label>
       <div class="chips-wrap" id="t-chips-container"></div>
     </div>
+    <div id="t-inscripciones" style="margin-top:.5rem;"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-torneo')">CANCELAR</button>
       <button class="btn btn-primary" onclick="saveTorneo()">CREAR Y GENERAR BRACKET</button>
@@ -197,7 +159,7 @@
 
 <!-- Add Llave -->
 <div class="overlay" id="modal-llave">
-  <div class="modal" style="width:620px;">
+  <div class="modal" style="width:700px;">
     <div class="modal-title" style="color:var(--purple);">NUEVA LLAVE</div>
     <div class="grid-2">
       <div class="form-row">
@@ -209,34 +171,24 @@
         <input type="text" id="lv-fecha" placeholder="Ej: 23/03/2026">
       </div>
     </div>
-    <div class="grid-2">
-      <div class="form-row">
-        <label>Clase</label>
-        <select id="lv-clase" onchange="filterChips('lv')">
-          <option value="">— Todas —</option>
-          <option value="C1">CLASE 1</option><option value="C2">CLASE 2</option>
-          <option value="C3">CLASE 3</option><option value="C4">CLASE 4</option>
-          <option value="C5">CLASE 5</option><option value="C6">CLASE 6</option>
-          <option value="C7">CLASE 7</option><option value="C8">CLASE 8</option>
-          <option value="C9">CLASE 9</option><option value="C10">CLASE 10</option>
-          <option value="L1">LIBRE L1</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label>Cantidad de corredores</label>
-        <select id="lv-n" onchange="updateLlavePreview()">
-          <option value="8">8 corredores</option>
-          <option value="10">10 corredores</option>
-          <option value="12">12 corredores</option>
-          <option value="14">14 corredores</option>
-          <option value="16" selected>16 corredores</option>
-          <option value="18">18 corredores</option>
-          <option value="20">20 corredores</option>
-          <option value="24">24 corredores</option>
-          <option value="28">28 corredores</option>
-          <option value="32">32 corredores</option>
-        </select>
-      </div>
+    <div class="form-row">
+      <label>Notas (opcional)</label>
+      <textarea id="lv-notas" rows="2" placeholder="Ej: Repechaje doble, clasificatoria regional…"></textarea>
+    </div>
+    <div class="form-row">
+      <label>Cantidad de corredores</label>
+      <select id="lv-n" onchange="updateLlavePreview()">
+        <option value="8">8 corredores</option>
+        <option value="10">10 corredores</option>
+        <option value="12">12 corredores</option>
+        <option value="14">14 corredores</option>
+        <option value="16" selected>16 corredores</option>
+        <option value="18">18 corredores</option>
+        <option value="20">20 corredores</option>
+        <option value="24">24 corredores</option>
+        <option value="28">28 corredores</option>
+        <option value="32">32 corredores</option>
+      </select>
     </div>
     <div id="llave-preview-box"></div>
     <div class="form-row" style="margin-top:.8rem;">
@@ -244,6 +196,7 @@
       <div class="chips-wrap" id="lv-chips-container"></div>
       <div class="helper">El sorteo es al azar. Los repechajistas se asignan automáticamente.</div>
     </div>
+    <div id="lv-inscripciones" style="margin-top:.5rem;"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-llave')">CANCELAR</button>
       <button class="btn btn-purple" onclick="saveLlave()">GENERAR LLAVE</button>
@@ -251,18 +204,21 @@
   </div>
 </div>
 
-<!-- Result -->
+<!-- Result / Corrección -->
 <div class="overlay" id="modal-result">
   <div class="modal" style="width:520px;">
     <div class="modal-title" id="r-modal-title">REGISTRAR RESULTADO</div>
-    <input type="hidden" id="r-context-type"> <!-- 'torneo' | 'llave' | 'llave-rep' -->
+    <div id="r-correccion-badge" style="display:none;background:rgba(10,132,255,.12);border:1px solid rgba(10,132,255,.3);border-radius:4px;padding:.4rem .8rem;font-family:var(--mono);font-size:.72rem;color:var(--blue);margin-bottom:1rem;">✏ MODO CORRECCIÓN — Se revertirá el resultado anterior</div>
+    <input type="hidden" id="r-context-type">
     <input type="hidden" id="r-parent-id">
     <input type="hidden" id="r-ronda-idx">
     <input type="hidden" id="r-match-idx">
+    <input type="hidden" id="r-correccion-mode">
     <div id="r-clase-info" style="font-family:var(--mono);font-size:.75rem;color:var(--text2);margin-bottom:1.2rem;"></div>
     <div class="players-side">
       <div class="player-side-box">
         <div class="side-name" id="r-name1">—</div>
+        <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);margin-bottom:.4rem;" id="r-clase1"></div>
         <div class="form-row">
           <label>Tiempo (segundos)</label>
           <input type="number" id="r-time1" placeholder="Ej: 11.45" step="0.001" min="0">
@@ -271,6 +227,7 @@
       </div>
       <div class="player-side-box">
         <div class="side-name" id="r-name2">—</div>
+        <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);margin-bottom:.4rem;" id="r-clase2"></div>
         <div class="form-row">
           <label>Tiempo (segundos)</label>
           <input type="number" id="r-time2" placeholder="Ej: 11.60" step="0.001" min="0">
@@ -279,9 +236,18 @@
       </div>
     </div>
     <div id="r-preview" style="margin-top:1rem;font-family:var(--mono);font-size:.8rem;color:var(--text2);min-height:1.2rem;"></div>
-    <div class="modal-actions">
+    <!-- Confirmación explícita -->
+    <div id="r-confirm-box" style="display:none;background:var(--bg3);border:1px solid var(--accent);border-radius:6px;padding:1rem;margin-top:1rem;">
+      <div style="font-family:var(--mono);font-size:.75rem;color:var(--accent);letter-spacing:.1em;margin-bottom:.5rem;">✓ CONFIRMAR RESULTADO</div>
+      <div id="r-confirm-summary" style="font-family:var(--mono);font-size:.85rem;color:var(--text);"></div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn btn-ghost" onclick="cancelConfirm()">← CORREGIR</button>
+        <button class="btn btn-primary" id="r-confirm-btn" onclick="saveResult()">🏁 CONFIRMAR Y GUARDAR</button>
+      </div>
+    </div>
+    <div id="r-actions-box" class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-result')">CANCELAR</button>
-      <button class="btn btn-primary" onclick="saveResult()">CONFIRMAR RESULTADO</button>
+      <button class="btn btn-primary" onclick="requestConfirm()">REVISAR RESULTADO →</button>
     </div>
   </div>
 </div>
@@ -302,7 +268,7 @@
 
 <div id="toast"></div>
 
-<!-- Firebase SDK (compat mode for simplicity) -->
+<!-- Firebase SDK (compat mode) -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
