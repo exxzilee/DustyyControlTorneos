@@ -1,0 +1,22 @@
+{
+  "name": "picadas-ar-functions",
+  "version": "1.0.0",
+  "description": "Firebase Cloud Functions — Picadas AR (Mercado Pago webhook + VIP)",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.1.0",
+    "firebase-functions": "^4.8.0",
+    "mercadopago": "^2.0.15"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0"
+  }
+}

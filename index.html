@@ -186,14 +186,22 @@
         <span style="color:var(--text2);font-size:.74rem;display:block;margin-top:.1rem;">Prize Pool real — requiere cobro de inscripción</span>
       </label>
     </div>
-    <div class="form-row">
-      <label>Pilotos participantes <span id="t-chips-count" style="color:var(--accent);">(0)</span></label>
-      <div class="chips-wrap" id="t-chips-container"></div>
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Clase del torneo</label>
+        <select id="t-clase">
+          <option value="">Abierto (todas las clases)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Límite de inscripción</label>
+        <input type="datetime-local" id="t-limite">
+      </div>
     </div>
-    <div id="t-inscripciones" style="margin-top:.5rem;"></div>
+    <div class="helper" style="margin-bottom:1rem;">Los jugadores podrán solicitar inscripción desde la lista de torneos. El bracket se genera cuando estés listo.</div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-torneo')">CANCELAR</button>
-      <button class="btn btn-primary" onclick="saveTorneo()">CREAR Y GENERAR BRACKET</button>
+      <button class="btn btn-primary" onclick="saveTorneo()">CREAR TORNEO</button>
     </div>
   </div>
 </div>
@@ -414,6 +422,10 @@
         <label>Fecha</label>
         <input type="text" id="et-fecha" placeholder="Ej: 23/03/2026">
       </div>
+    </div>
+    <div class="form-row">
+      <label>Límite de inscripción</label>
+      <input type="datetime-local" id="et-limite">
     </div>
     <div class="form-row">
       <label>Notas</label>

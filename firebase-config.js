@@ -1,7 +1,20 @@
 // ═══════════════════════════════════════════════════════════════════
 // FIREBASE CONFIG — Picadas Argentinas
 // ═══════════════════════════════════════════════════════════════════
-// 
+//
+// ⚠ NOTA SOBRE SEGURIDAD DE LA API KEY:
+// Las API Keys de Firebase en apps web SON PÚBLICAS POR DISEÑO.
+// Google las incluye en el HTML de todas las apps Firebase. No es
+// un error exponerlas — no representan un riesgo si las Firebase
+// Security Rules están bien configuradas (que ya las tenés).
+//
+// PARA MÁXIMA SEGURIDAD, restingí la apiKey a tu dominio:
+// 1. Ir a https://console.cloud.google.com/apis/credentials
+// 2. Clicar en la API key del proyecto "dustyy-torneos"
+// 3. En "Application restrictions" → seleccionar "HTTP referrers"
+// 4. Agregar tu dominio (ej: https://dustyy-torneos.firebaseapp.com/*)
+// 5. Guardar — la key solo funcionará desde ese dominio.
+//
 // ⚠ INSTRUCCIONES PARA CONFIGURAR FIREBASE:
 // 
 // 1. Ir a https://console.firebase.google.com/

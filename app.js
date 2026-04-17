@@ -564,10 +564,29 @@ function renderTorneos(){
     return;
   }
   el.innerHTML=`<div class="torneos-grid">${[...torneos].reverse().map(t=>{
-    const total=t.bracket.rondas.reduce((a,r)=>a+r.filter(m=>m.estado!=='bye').length,0);
-    const done=t.bracket.rondas.reduce((a,r)=>a+r.filter(m=>m.estado==='completado').length,0);
+    const total=t.bracket?.rondas?.reduce((a,r)=>a+r.filter(m=>m.estado!=='bye').length,0)??0;
+    const done=t.bracket?.rondas?.reduce((a,r)=>a+r.filter(m=>m.estado==='completado').length,0)??0;
     const bc=t.estado==='finalizado'?'badge-done':t.estado==='activo'?'badge-active':'badge-pending';
     const bl=t.estado==='finalizado'?'FINALIZADO':t.estado==='activo'?'EN CURSO':'PENDIENTE';
+    // Estado de inscripción para el usuario actual
+    let inscBtn='';
+    if(!_isAdmin&&!_isGuest&&t.estado==='activo'){
+      const fechaLimite=t.fechaLimiteInscripcion?new Date(t.fechaLimiteInscripcion):null;
+      const inscCerrada=fechaLimite&&new Date()>fechaLimite;
+      const myInsc=_myInsc[t.id];
+      if(inscCerrada){
+        inscBtn=`<div style="margin-top:.8rem;padding:.5rem .8rem;border-radius:8px;background:rgba(255,59,48,.1);border:1px solid rgba(255,59,48,.3);font-family:var(--mono);font-size:.72rem;color:var(--red);text-align:center;">⏰ Inscripciones cerradas</div>`;
+      } else if(myInsc?.estado==='aprobado'){
+        inscBtn=`<div style="margin-top:.8rem;padding:.5rem .8rem;border-radius:8px;background:rgba(48,209,88,.1);border:1px solid rgba(48,209,88,.3);font-family:var(--mono);font-size:.72rem;color:var(--green);text-align:center;">✓ Inscripto</div>`;
+      } else if(myInsc?.estado==='pendiente'){
+        inscBtn=`<div style="margin-top:.8rem;padding:.5rem .8rem;border-radius:8px;background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.25);font-family:var(--mono);font-size:.72rem;color:var(--accent);text-align:center;">⏳ Solicitud pendiente de aprobación</div>`;
+      } else {
+        // 'rechazado' o sin inscripción → puede solicitar
+        const rechazado=myInsc?.estado==='rechazado';
+        inscBtn=`${rechazado?`<div style="margin-top:.5rem;font-family:var(--mono);font-size:.68rem;color:var(--red);text-align:center;">Tu solicitud fue rechazada. Podés volver a intentarlo.</div>`:''}
+        <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:.5rem;justify-content:center;" onclick="event.stopPropagation();openInscriptionRequest('${t.id}')">Solicitar inscripción</button>`;
+      }
+    }
     return`<div class="t-card${t.isPremium?' t-card-premium':''}">
       <div onclick="openTorneoDetail('${t.id}')" style="cursor:pointer;">
       <div class="t-card-name">${t.nombre}</div>
@@ -575,26 +594,32 @@ function renderTorneos(){
       ${t.isPremium?'<div class="premium-tag">💰 PREMIUM — PRIZE POOL</div>':''}
       <div class="t-card-meta">
         <span class="badge ${bc}">${bl}</span>
-        <span class="meta-pill">${t.jugadores.length} pilotos</span>
-        <span class="meta-pill">${done}/${total} carreras</span>
+        <span class="meta-pill">${(t.jugadores||[]).length} inscriptos</span>
+        ${t.bracket?`<span class="meta-pill">${done}/${total} carreras</span>`:'<span class="meta-pill" style="color:var(--accent);">Sin bracket</span>'}
+        ${t.claseTorneo?`<span class="meta-pill">${TOPES[t.claseTorneo]?.label||t.claseTorneo}</span>`:''}
         ${t.fecha?`<span class="meta-pill">${t.fecha}</span>`:''}
       </div>
       ${t.campeon?`<div style="margin-top:.8rem;font-size:.82rem;color:var(--gold);">🏆 ${getJugadorNombre(t.campeon)}</div>`:''}
       </div>
-      ${(!_isAdmin&&!_isGuest&&t.estado==='activo')?`<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:.8rem;justify-content:center;" onclick="event.stopPropagation();openInscriptionRequest('${t.id}')">Solicitar inscripción</button>`:''}
+      ${inscBtn}
     </div>`;
   }).join('')}</div>`;
 }
 
-function openAddTorneo() { playOpen();
-  setTimeout(()=>{ const p=document.getElementById('t-premium'); if(p){p.onchange=()=>renderChips('t');} }, 100);
-  const{jugadores}=load();
-  if(!jugadores.length){toast('Primero registrá pilotos.','err');return;}
+function openAddTorneo() {
+  playOpen();
+  // Poblar select de clase del torneo
+  const tClase=document.getElementById('t-clase');
+  if(tClase&&tClase.options.length<=1){
+    tClase.innerHTML=`<option value="">Abierto (todas las clases)</option>`+CLASE_OPTS;
+  }
   document.getElementById('t-nombre').value='';
   document.getElementById('t-fecha').value=new Date().toLocaleDateString('es-AR');
   document.getElementById('t-notas').value='';
-  renderChips('t');
-  document.getElementById('t-inscripciones').innerHTML='';
+  document.getElementById('t-clase').value='';
+  // Fecha límite default: mañana a las 23:59
+  const manana=new Date();manana.setDate(manana.getDate()+1);manana.setHours(23,59,0,0);
+  document.getElementById('t-limite').value=manana.toISOString().slice(0,16);
   openModal('modal-torneo');
 }
 
@@ -603,18 +628,19 @@ function saveTorneo(){
   const fecha=document.getElementById('t-fecha').value.trim();
   const notas=document.getElementById('t-notas').value.trim();
   const isPremium=document.getElementById('t-premium')?.checked||false;
-  const inscripciones=getInscripcionesFromModal('t');
+  const claseTorneo=document.getElementById('t-clase')?.value||'';
+  const limiteVal=document.getElementById('t-limite')?.value||'';
   if(!nombre){toast('Poné un nombre.','err');return;}
-  if(inscripciones.length<2){toast('Seleccioná al menos 2 pilotos.','err');return;}
-  const bracket=generarBracketSimple(inscripciones.map(i=>i.pilotoId));
   const state=load();
   state.torneos.push({
-    id:uid(),nombre,fecha,notas,isPremium,estado:'activo',
-    jugadores:inscripciones,
-    bracket:{rondas:bracket},campeon:null
+    id:uid(),nombre,fecha,notas,isPremium,claseTorneo,
+    fechaLimiteInscripcion:limiteVal||null,
+    estado:'activo',
+    jugadores:[],
+    bracket:null,campeon:null
   });
-  logChange('TORNEO',`Torneo "${nombre}" creado con ${inscripciones.length} pilotos`);
-  save(state);playChime(); toast(`✓ Torneo "${nombre}" creado`, 'ok');
+  logChange('TORNEO',`Torneo "${nombre}" creado — inscripciones abiertas`);
+  save(state);playChime(); toast(`✓ Torneo "${nombre}" creado. Inscripciones abiertas.`, 'ok');
   closeModal('modal-torneo');renderTorneos();
 }
 
@@ -701,19 +727,25 @@ function renderTorneoDetail(){
   const{torneos}=load();
   const t=torneos.find(x=>x.id===activeTorneoId);
   if(!t){closeTorneoDetail();return;}
-  const total=t.bracket.rondas.reduce((a,r)=>a+r.filter(m=>m.estado!=='bye').length,0);
-  const done=t.bracket.rondas.reduce((a,r)=>a+r.filter(m=>m.estado==='completado').length,0);
+  const total=t.bracket?.rondas?.reduce((a,r)=>a+r.filter(m=>m.estado!=='bye').length,0)??0;
+  const done=t.bracket?.rondas?.reduce((a,r)=>a+r.filter(m=>m.estado==='completado').length,0)??0;
   const bc=t.estado==='finalizado'?'badge-done':'badge-active';
   const bl=t.estado==='finalizado'?'FINALIZADO':'EN CURSO';
+  // Estado de inscripciones
+  const fechaLimite=t.fechaLimiteInscripcion?new Date(t.fechaLimiteInscripcion):null;
+  const inscCerrada=fechaLimite&&new Date()>fechaLimite;
+  const jugadores=t.jugadores||[];
   let html=`<div class="t-detail-head">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
       <div><div class="t-detail-name">${t.nombre}</div>
       ${t.notas?`<div style="font-family:var(--mono);font-size:.72rem;color:var(--text3);margin-bottom:.5rem;">${t.notas}</div>`:''}
       <div class="t-detail-meta">
         <span class="badge ${bc}">${bl}</span>
-        <span class="meta-pill">${t.jugadores.length} pilotos</span>
-        <span class="meta-pill">${done}/${total} carreras</span>
+        <span class="meta-pill">${jugadores.length} inscriptos</span>
+        ${t.bracket?`<span class="meta-pill">${done}/${total} carreras</span>`:'<span class="meta-pill" style="color:var(--accent);">Sin bracket</span>'}
+        ${t.claseTorneo?`<span class="meta-pill">${TOPES[t.claseTorneo]?.label||t.claseTorneo}</span>`:''}
         ${t.fecha?`<span class="meta-pill">📅 ${t.fecha}</span>`:''}
+        ${fechaLimite?`<span class="meta-pill" style="${inscCerrada?'color:var(--red);':'color:var(--green);'}">${inscCerrada?'⏰ Inscripción cerrada':'⏱ Cierra: '+fechaLimite.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>`:''}
       </div></div>
       <div style="display:flex;gap:.5rem;">
         ${_isAdmin?`<button class="btn btn-ghost btn-sm" onclick="openEditTorneo('${t.id}')">✏ Editar</button>`:''}
@@ -726,7 +758,7 @@ function renderTorneoDetail(){
     const pending=_pendingInsc[t.id];
     if(pending&&pending.length){
       html+=`<div style="background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.2);border-radius:var(--radius);padding:1.2rem 1.4rem;margin-bottom:1.5rem;">
-        <div style="font-weight:700;font-size:.85rem;color:var(--blue);margin-bottom:.8rem;">Solicitudes de inscripción pendientes (${pending.length})</div>
+        <div style="font-weight:700;font-size:.85rem;color:var(--blue);margin-bottom:.8rem;">Solicitudes pendientes (${pending.length})</div>
         ${pending.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.05);">
           <div>
             <span style="font-weight:600;">${r.username}</span>
@@ -742,12 +774,40 @@ function renderTorneoDetail(){
       </div>`;
     }
   }
+  // Lista de inscriptos aprobados
+  if(jugadores.length){
+    html+=`<div style="background:var(--bg2);border:1px solid var(--glass-border);border-radius:var(--radius);padding:1.2rem 1.4rem;margin-bottom:1.5rem;">
+      <div style="font-weight:700;font-size:.85rem;color:var(--text2);margin-bottom:.8rem;">Pilotos inscriptos (${jugadores.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+        ${jugadores.map(j=>{
+          const pid=typeof j==='object'?j.pilotoId:j;
+          const ins=typeof j==='object'?j:null;
+          return`<div class="meta-pill">${getJugadorNombre(pid)}${ins?.clase?` · <span style="color:var(--accent)">${TOPES[ins.clase]?.label||ins.clase}</span>`:''}${ins?.vehiculo?` <span style="color:var(--text3);font-size:.65rem;">${ins.vehiculo}</span>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+  // Botón generar bracket (admin, sin bracket, con pilotos)
+  if(_isAdmin&&!t.bracket&&jugadores.length>=2){
+    html+=`<div style="margin-bottom:1.5rem;display:flex;justify-content:center;">
+      <button class="btn btn-primary" onclick="generarBracketTorneo('${t.id}')">
+        🏁 GENERAR BRACKET CON ${jugadores.length} PILOTOS
+      </button>
+    </div>`;
+  } else if(_isAdmin&&!t.bracket&&jugadores.length<2){
+    html+=`<div style="text-align:center;padding:2rem;font-family:var(--mono);font-size:.8rem;color:var(--text3);">
+      Esperando inscripciones para generar el bracket (mínimo 2 pilotos)
+    </div>`;
+  }
   if(t.campeon)html+=`<div style="background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;text-align:center;">
     <div style="font-size:2.5rem;margin-bottom:.5rem;">🏆</div>
     <div style="font-family:var(--mono);font-size:.75rem;color:var(--accent);letter-spacing:.3em;margin-bottom:.4rem;">CAMPEÓN DEL TORNEO</div>
     <div style="font-family:var(--display);font-size:2.5rem;letter-spacing:.1em;">${getJugadorNombre(t.campeon)}</div>
   </div>`;
-  html+=`<div class="bracket-scroll"><div class="bracket">${renderBracketCols(t.bracket.rondas,'torneo',t.id,t)}</div></div>`;
+  if(t.bracket){
+    html+=`<div class="bracket-scroll"><div class="bracket">${renderBracketCols(t.bracket.rondas,'torneo',t.id,t)}</div></div>`;
+  }
   document.getElementById('torneo-detail-content').innerHTML=html;
 }
 
@@ -1358,6 +1418,24 @@ function renderStats(){
   el.innerHTML=html;
 }
 
+// ═══ GENERAR BRACKET DESDE INSCRIPTOS ════════════════════════════
+function generarBracketTorneo(tid){
+  if(!confirm('¿Generar el bracket con los pilotos inscriptos actuales? Esta acción cierra las inscripciones.'))return;
+  const state=load();
+  const idx=state.torneos.findIndex(t=>t.id===tid);
+  if(idx<0)return;
+  const t=state.torneos[idx];
+  if(!t.jugadores||t.jugadores.length<2){toast('Se necesitan al menos 2 pilotos inscriptos.','err');return;}
+  const ids=t.jugadores.map(j=>typeof j==='object'?j.pilotoId:j);
+  state.torneos[idx].bracket={rondas:generarBracketSimple(ids)};
+  // Cerrar inscripciones poniendo fecha límite en el pasado
+  state.torneos[idx].fechaLimiteInscripcion=new Date(Date.now()-1000).toISOString().slice(0,16);
+  logChange('BRACKET',`Bracket generado para "${t.nombre}" con ${t.jugadores.length} pilotos`);
+  save(state);playChime();
+  renderTorneoDetail();
+  toast(`✓ Bracket generado con ${t.jugadores.length} pilotos`, 'ok');
+}
+
 // ═══ EDITAR TORNEO ════════════════════════════════════════════════
 function openEditTorneo(id){
   const t=load().torneos.find(x=>x.id===id);if(!t)return;
@@ -1365,6 +1443,7 @@ function openEditTorneo(id){
   document.getElementById('et-nombre').value=t.nombre;
   document.getElementById('et-fecha').value=t.fecha||'';
   document.getElementById('et-notas').value=t.notas||'';
+  document.getElementById('et-limite').value=t.fechaLimiteInscripcion||'';
   openModal('modal-edit-torneo');
 }
 function saveEditTorneo(){
@@ -1372,6 +1451,7 @@ function saveEditTorneo(){
   const nombre=document.getElementById('et-nombre').value.trim();
   const fecha=document.getElementById('et-fecha').value.trim();
   const notas=document.getElementById('et-notas').value.trim();
+  const limite=document.getElementById('et-limite').value||null;
   if(!nombre){toast('El nombre no puede estar vacío.','err');return;}
   const state=load();
   const idx=state.torneos.findIndex(x=>x.id===id);
@@ -1379,6 +1459,7 @@ function saveEditTorneo(){
   state.torneos[idx].nombre=nombre;
   state.torneos[idx].fecha=fecha;
   state.torneos[idx].notas=notas;
+  state.torneos[idx].fechaLimiteInscripcion=limite;
   logChange('EDITAR',`Torneo "${nombre}" editado`);
   save(state);
   closeModal('modal-edit-torneo');
@@ -1388,31 +1469,55 @@ function saveEditTorneo(){
 
 // ═══ INSCRIPCIONES DE USUARIOS (Google) ═══════════════════════════
 let _pendingInsc={};
+let _myInsc={};  // tid -> {estado, id} para el usuario actual
 let _inscListener=null;
 
 function startInscSync(){
   if(_inscListener)return;
   _inscListener=inscRef.on('value',snap=>{
     _pendingInsc={};
+    _myInsc={};
     const data=snap.val()||{};
+    const currentUser=auth.currentUser;
     Object.entries(data).forEach(([tid,reqs])=>{
       const list=Object.entries(reqs||{})
         .filter(([,r])=>r.estado==='pendiente')
         .map(([rid,r])=>({...r,id:rid}));
       if(list.length)_pendingInsc[tid]=list;
+      // Rastrear inscripción propia
+      if(currentUser){
+        Object.entries(reqs||{}).forEach(([rid,r])=>{
+          if(r.uid===currentUser.uid){
+            // Guardar el más reciente (puede haber uno rechazado y uno nuevo)
+            if(!_myInsc[tid]||r.estado!=='rechazado')
+              _myInsc[tid]={estado:r.estado,id:rid};
+          }
+        });
+      }
     });
-    // Refrescar si hay un torneo abierto
+    // Refrescar vistas
     if(activeTorneoId)renderTorneoDetail();
+    else renderTorneos();
   });
 }
 
 function openInscriptionRequest(tid){
   const t=load().torneos.find(x=>x.id===tid);if(!t)return;
+  // Verificar si el plazo cerró
+  if(t.fechaLimiteInscripcion&&new Date()>new Date(t.fechaLimiteInscripcion)){
+    toast('El plazo de inscripción ya cerró.','err');return;
+  }
+  // Verificar si ya tiene solicitud activa
+  const myInsc=_myInsc[tid];
+  if(myInsc&&myInsc.estado==='pendiente'){toast('Ya tenés una solicitud pendiente para este torneo.','err');return;}
+  if(myInsc&&myInsc.estado==='aprobado'){toast('Ya estás inscripto en este torneo.','err');return;}
+  // Precargar clase del torneo si está definida
+  const irClase=document.getElementById('ir-clase');
+  if(t.claseTorneo&&irClase){irClase.value=t.claseTorneo;}
   document.getElementById('ir-tid').value=tid;
   document.getElementById('ir-torneo-nombre').textContent=t.nombre;
   document.getElementById('ir-username').value='';
   document.getElementById('ir-vehiculo').value='';
-  document.getElementById('ir-clase').value='L1';
   openModal('modal-inscripcion-req');
 }
 
@@ -1424,6 +1529,15 @@ function saveInscriptionRequest(){
   if(!username){toast('Ingresá tu username de Roblox.','err');return;}
   const user=auth.currentUser;
   if(!user){toast('Debés estar logueado.','err');return;}
+  // Doble verificación: duplicados y plazo
+  const t=load().torneos.find(x=>x.id===tid);
+  if(t?.fechaLimiteInscripcion&&new Date()>new Date(t.fechaLimiteInscripcion)){
+    toast('El plazo de inscripción ya cerró.','err');return;
+  }
+  const myInsc=_myInsc[tid];
+  if(myInsc&&(myInsc.estado==='pendiente'||myInsc.estado==='aprobado')){
+    toast('Ya tenés una solicitud para este torneo.','err');return;
+  }
   const req={
     uid:user.uid, email:user.email||user.displayName||'',
     username, vehiculo, clase,
@@ -1436,16 +1550,31 @@ function saveInscriptionRequest(){
 }
 
 function approveInscription(tid,reqId){
-  inscRef.child(tid+'/'+reqId+'/estado').set('aprobado');
-  // Agregar piloto a la lista general si no existe
   const req=(_pendingInsc[tid]||[]).find(r=>r.id===reqId);
-  if(!req)return;
+  if(!req){toast('No se encontró la solicitud.','err');return;}
+  inscRef.child(tid+'/'+reqId+'/estado').set('aprobado');
   const state=load();
-  if(!state.jugadores.find(j=>j.username.toLowerCase()===req.username.toLowerCase())){
-    state.jugadores.push({id:uid(),username:req.username,isVIP:false});
-    save(state);
+  // Agregar a jugadores generales si no existe
+  let piloto=state.jugadores.find(j=>j.username.toLowerCase()===req.username.toLowerCase());
+  if(!piloto){
+    piloto={id:uid(),username:req.username,isVIP:false};
+    state.jugadores.push(piloto);
   }
-  toast(`${req.username} aprobado y agregado a pilotos.`,'ok');
+  // Agregar al torneo si no está ya
+  const tidx=state.torneos.findIndex(t=>t.id===tid);
+  if(tidx>=0){
+    if(!state.torneos[tidx].jugadores)state.torneos[tidx].jugadores=[];
+    const yaEnTorneo=state.torneos[tidx].jugadores.some(j=>{
+      const jid=typeof j==='object'?j.pilotoId:j;
+      return jid===piloto.id;
+    });
+    if(!yaEnTorneo){
+      state.torneos[tidx].jugadores.push({pilotoId:piloto.id,vehiculo:req.vehiculo||'',clase:req.clase||'L1'});
+    }
+  }
+  logChange('INSCRIPCIÓN',`${req.username} aprobado en torneo`);
+  save(state);
+  toast(`${req.username} aprobado e inscripto en el torneo.`,'ok');
 }
 
 function rejectInscription(tid,reqId){
