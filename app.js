@@ -6,9 +6,9 @@ let _isGuest  = false;
 let _isAdmin  = false;   // true solo para email/password o Google UID en /admins
 
 // ═══ SOUNDS ════════════════════════════════════════════════════════
-const sndClick = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'); sndClick.volume = 0.2;
-const sndOpen = new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3'); sndOpen.volume = 0.2;
-const sndSucc = new Audio('https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3'); sndSucc.volume = 0.2;
+const sndClick = new Audio('audio/click.mp3'); sndClick.volume = 0.2;
+const sndOpen = new Audio('audio/open.mp3'); sndOpen.volume = 0.2;
+const sndSucc = new Audio('audio/success.mp3'); sndSucc.volume = 0.2;
 
 function playClick() { try{ sndClick.currentTime=0; sndClick.play().catch(()=>{}); }catch(e){} }
 function playOpen()  { try{ sndOpen.currentTime=0; sndOpen.play().catch(()=>{}); }catch(e){} }
@@ -94,12 +94,8 @@ function renderAuthScreen(){
         </button>
       </div>
       <div class="auth-error" id="auth-error"></div>
-      <div style="margin-top:1.2rem;border-top:1px solid var(--glass-border);padding-top:1.2rem;">
-        <button class="btn btn-guest" onclick="enterGuestMode()">Ver como espectador</button>
-        <div style="text-align:center;font-size:.68rem;color:var(--text2);margin-top:.5rem;">Solo lectura — sin cuenta</div>
-      </div>
-      ${isL?`<div class="auth-toggle">¿No tenés cuenta? <a onclick="_authMode='register';renderAuthScreen()">Registrarse</a></div>`
-           :`<div class="auth-toggle">¿Ya tenés cuenta? <a onclick="_authMode='login';renderAuthScreen()">Iniciar sesión</a></div>`}
+
+
     </div>`;
   setTimeout(()=>document.getElementById('auth-email')?.focus(),100);
   document.getElementById('auth-screen').querySelectorAll('input').forEach(i=>{
@@ -113,8 +109,8 @@ function doAuth(){
   const errEl=document.getElementById('auth-error');
   if(!email||!pass){errEl.textContent='Completá email y contraseña.';return;}
   errEl.textContent='';
-  // Email/password siempre es admin
-  (_authMode==='login'?auth.signInWithEmailAndPassword(email,pass):auth.createUserWithEmailAndPassword(email,pass))
+  // Email/password siempre es admin (solo se permite login, la creación fue deshabilitada)
+  auth.signInWithEmailAndPassword(email,pass)
     .then(()=>{ _isAdmin=true; })
     .catch(err=>{
       const m={'auth/user-not-found':'No existe esa cuenta.','auth/wrong-password':'Contraseña incorrecta.',
