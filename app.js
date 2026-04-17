@@ -1,5 +1,19 @@
 // ═══ PICADAS AR v4 — app.js ══════════════════════════════════════
 
+// ═══ ESTADO GLOBAL ═══════════════════════════════════════════════
+let _authMode = 'login'; // 'login' | 'register'
+let _isGuest  = false;
+let _isAdmin  = false;   // true solo para email/password o Google UID en /admins
+
+// ═══ SOUNDS ════════════════════════════════════════════════════════
+const sndClick = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'); sndClick.volume = 0.2;
+const sndOpen = new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3'); sndOpen.volume = 0.2;
+const sndSucc = new Audio('https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3'); sndSucc.volume = 0.2;
+
+function playClick() { try{ sndClick.currentTime=0; sndClick.play().catch(()=>{}); }catch(e){} }
+function playOpen()  { try{ sndOpen.currentTime=0; sndOpen.play().catch(()=>{}); }catch(e){} }
+function playChime() { try{ sndSucc.currentTime=0; sndSucc.play().catch(()=>{}); }catch(e){} }
+
 // ═══ CONSTANTS ═══════════════════════════════════════════════════
 const TOPES = {
   C1:{label:'CLASE 1',tope:11.30}, C2:{label:'CLASE 2',tope:10.80},
@@ -17,6 +31,7 @@ let _dataLoaded = false;
 function load(){return _cache;}
 function save(state){
   _cache=state;
+  if(!_isAdmin) return;
   dbRef.set(state).catch(err=>{console.error(err);toast('Error al guardar.','err');});
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
@@ -30,38 +45,77 @@ function logChange(tipo,desc){
   save(s);
 }
 
-// ═══ AUTH ════════════════════════════════════════════════════════
-let _authMode='login', _isGuest=false;
+// ═══ VIP ADMIN ═════════════════════════════════════════════════════
+window.grantVip = function(pid, ev) {
+  if (ev) ev.stopPropagation();
+  const state = load();
+  const idx = state.jugadores.findIndex(x=>x.id===pid);
+  if(idx < 0) return;
+  const isV = !!state.jugadores[idx].isVIP;
+  if(confirm(isV ? "¿Quitar VIP a este piloto?" : "¿Otorgar Membresía VIP a este piloto?")) {
+    state.jugadores[idx].isVIP = !isV;
+    playChime();
+    save(state);
+    renderJugadores();
+    logChange('VIP', `Privilegios ${!isV?'otorgados a':'removidos de'} ${state.jugadores[idx].username}`);
+    toast(`VIP ${!isV?'Otorgado':'Removido'}`, 'ok');
+  }
+};
+
+// ═══ INIT ════════════════════════════════════════════════════════
+document.getElementById('searchPiloto').value='';
+// Poblar select de clases en modal de inscripción
+const irClase=document.getElementById('ir-clase');
+if(irClase)irClase.innerHTML=CLASE_OPTS;
 function renderAuthScreen(){
   const isL=_authMode==='login';
   document.getElementById('auth-screen').innerHTML=`
     <div class="auth-box">
-      <div class="logo-main">🏎 PICADAS AR</div>
+      <div class="logo-main">▲ PICADAS AR</div>
       <div class="logo-sub">GESTOR DE TORNEOS — ROBLOX</div>
-      <div class="modal-title">${isL?'INICIAR SESIÓN':'REGISTRARSE'}</div>
-      <div class="form-row"><label>EMAIL</label><input type="email" id="auth-email" placeholder="admin@picadas.com"></div>
-      <div class="form-row"><label>CONTRASEÑA</label><input type="password" id="auth-pass" placeholder="${isL?'Tu contraseña':'Mínimo 6 caracteres'}"></div>
-      <div class="modal-actions" style="justify-content:center;">
-        <button class="btn btn-primary" onclick="doAuth()" style="width:100%;justify-content:center;">${isL?'🔑 ENTRAR':'📝 CREAR CUENTA'}</button>
+      <div class="modal-title">${isL?'Iniciar sesión':'Crear cuenta'}</div>
+      <div class="form-row"><label>Email</label><input type="email" id="auth-email" placeholder="admin@picadas.com"></div>
+      <div class="form-row"><label>Contraseña</label><input type="password" id="auth-pass" placeholder="${isL?'Tu contraseña':'Mínimo 6 caracteres'}"></div>
+      <div class="modal-actions" style="justify-content:center;flex-direction:column;gap:.7rem;">
+        <button class="btn btn-primary" onclick="doAuth()" style="width:100%;justify-content:center;">${isL?'Entrar':'Crear cuenta'}</button>
+        <div style="display:flex;align-items:center;gap:.8rem;width:100%;">
+          <div style="flex:1;height:1px;background:var(--glass-border);"></div>
+          <span style="font-size:.75rem;color:var(--text2);">o</span>
+          <div style="flex:1;height:1px;background:var(--glass-border);"></div>
+        </div>
+        <button class="btn btn-ghost" onclick="doGoogleAuth()" style="width:100%;justify-content:center;gap:.6rem;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continuar con Google
+        </button>
       </div>
       <div class="auth-error" id="auth-error"></div>
-      <div style="margin-top:1.2rem;border-top:1px solid var(--border);padding-top:1.2rem;">
-        <button class="btn btn-guest" onclick="enterGuestMode()">👁 ENTRAR COMO ESPECTADOR</button>
-        <div style="text-align:center;font-family:var(--mono);font-size:.65rem;color:var(--text3);margin-top:.5rem;">Solo lectura — sin necesidad de cuenta</div>
+      <div style="margin-top:1.2rem;border-top:1px solid var(--glass-border);padding-top:1.2rem;">
+        <button class="btn btn-guest" onclick="enterGuestMode()">Ver como espectador</button>
+        <div style="text-align:center;font-size:.68rem;color:var(--text2);margin-top:.5rem;">Solo lectura — sin cuenta</div>
       </div>
+      ${isL?`<div class="auth-toggle">¿No tenés cuenta? <a onclick="_authMode='register';renderAuthScreen()">Registrarse</a></div>`
+           :`<div class="auth-toggle">¿Ya tenés cuenta? <a onclick="_authMode='login';renderAuthScreen()">Iniciar sesión</a></div>`}
     </div>`;
   setTimeout(()=>document.getElementById('auth-email')?.focus(),100);
   document.getElementById('auth-screen').querySelectorAll('input').forEach(i=>{
     i.addEventListener('keydown',e=>{if(e.key==='Enter')doAuth();});
   });
 }
+
 function doAuth(){
   const email=document.getElementById('auth-email').value.trim();
   const pass=document.getElementById('auth-pass').value;
   const errEl=document.getElementById('auth-error');
   if(!email||!pass){errEl.textContent='Completá email y contraseña.';return;}
   errEl.textContent='';
+  // Email/password siempre es admin
   (_authMode==='login'?auth.signInWithEmailAndPassword(email,pass):auth.createUserWithEmailAndPassword(email,pass))
+    .then(()=>{ _isAdmin=true; })
     .catch(err=>{
       const m={'auth/user-not-found':'No existe esa cuenta.','auth/wrong-password':'Contraseña incorrecta.',
         'auth/invalid-credential':'Credenciales inválidas.','auth/email-already-in-use':'Email ya registrado.',
@@ -70,36 +124,66 @@ function doAuth(){
       errEl.textContent=m[err.code]||err.message;
     });
 }
+
+function doGoogleAuth(){
+  auth.signInWithPopup(googleProvider).catch(err=>{
+    const errEl=document.getElementById('auth-error');
+    if(errEl)errEl.textContent=err.message;
+  });
+}
+
+async function checkAdminRole(user){
+  if(!user)return false;
+  // Email/password → siempre admin
+  const provider=user.providerData[0]?.providerId;
+  if(provider==='password'){_isAdmin=true;return true;}
+  // Google → verificar en /admins/{uid}
+  try{
+    const snap=await db.ref('admins/'+user.uid).once('value');
+    _isAdmin=snap.val()===true;
+  }catch(e){_isAdmin=false;}
+  return _isAdmin;
+}
+
 function logout(){
-  if(_isGuest){_isGuest=false;document.body.classList.remove('guest-mode');
+  _isAdmin=false;
+  if(_isGuest){
+    _isGuest=false;
+    document.body.classList.remove('guest-mode');
     document.getElementById('guest-banner').style.display='none';
     document.getElementById('app-wrapper').style.display='none';
     document.getElementById('auth-screen').style.display='';
-    stopRealtimeSync();_dataLoaded=false;_cache={jugadores:[],torneos:[],llaves:[],changelog:[]};renderAuthScreen();return;}
+    stopRealtimeSync();_dataLoaded=false;_cache={jugadores:[],torneos:[],llaves:[],changelog:[]};renderAuthScreen();return;
+  }
   auth.signOut();
 }
+
 function enterGuestMode(){
-  _isGuest=true;document.body.classList.add('guest-mode');
+  _isGuest=true;_isAdmin=false;
+  document.body.classList.add('guest-mode');
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-wrapper').style.display='block';
-  document.getElementById('user-email').textContent='ESPECTADOR';
-  document.getElementById('btn-logout').textContent='INICIAR SESIÓN';
+  document.getElementById('user-email').textContent='Espectador';
+  document.getElementById('btn-logout').textContent='Iniciar sesión';
   document.getElementById('guest-banner').style.display='block';
   showLoading();startRealtimeSync();
 }
 function showLoading(){document.getElementById('loading-screen').style.display='';}
 function hideLoading(){document.getElementById('loading-screen').style.display='none';}
 
-auth.onAuthStateChanged(user=>{
+auth.onAuthStateChanged(async user=>{
   if(user){
+    await checkAdminRole(user);
     document.getElementById('auth-screen').style.display='none';
     document.getElementById('app-wrapper').style.display='block';
-    document.getElementById('user-email').textContent=user.email;
-    document.getElementById('btn-logout').textContent='CERRAR SESIÓN';
+    document.getElementById('user-email').textContent=user.displayName||user.email;
+    document.getElementById('btn-logout').textContent='Cerrar sesión';
     document.getElementById('guest-banner').style.display='none';
     document.body.classList.remove('guest-mode');_isGuest=false;
+    if(!_isAdmin) document.body.classList.add('guest-mode');
     showLoading();startRealtimeSync();
   } else {
+    _isAdmin=false;
     if(_isGuest)return;
     document.getElementById('auth-screen').style.display='';
     document.getElementById('app-wrapper').style.display='none';
@@ -131,12 +215,31 @@ function refreshActiveTab(){
 // ═══ NAV ═════════════════════════════════════════════════════════
 let activeTorneoId=null, activeLlaveId=null;
 function goTab(tab){
-  document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+  playClick();
+  const prev=document.querySelector('section.active');
+  const next=document.getElementById(tab);
+  
+  if (tab === 'premium') {
+    if (!_isAdmin && _isGuest) {
+      document.getElementById('premium-locked').style.display = 'block';
+      document.getElementById('premium-unlocked').style.display = 'none';
+    } else {
+      document.getElementById('premium-locked').style.display = 'none';
+      document.getElementById('premium-unlocked').style.display = 'block';
+      const adminActions = document.getElementById('premium-admin-actions');
+      if (adminActions) adminActions.style.display = _isAdmin ? '' : 'none';
+      if(typeof renderPremiumTorneos === 'function') renderPremiumTorneos();
+    }
+  }
+  
+  if(prev===next)return;
+  const tl=gsap.timeline();
+  if(prev){tl.to(prev,{opacity:0,y:-10,duration:.18,ease:'power2.in',onComplete:()=>{prev.classList.remove('active');}});}
+  tl.set(next,{opacity:0,y:16}).call(()=>next.classList.add('active'))
+    .to(next,{opacity:1,y:0,duration:.28,ease:'power2.out'});
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-  document.getElementById(tab).classList.add('active');
-  ['jugadores','torneos','llaves','stats'].forEach((t,i)=>{
-    if(t===tab)document.querySelectorAll('nav button')[i].classList.add('active');
-  });
+  const navBtn=document.getElementById('nav-'+tab);
+  if(navBtn)navBtn.classList.add('active');
   if(tab==='jugadores')renderJugadores();
   if(tab==='torneos')renderTorneos();
   if(tab==='llaves')renderLlaves();
@@ -151,10 +254,31 @@ function toast(msg,type='info'){
 }
 
 // ═══ MODALS ══════════════════════════════════════════════════════
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){
+  const ov=document.getElementById(id);
+  const m=ov?.querySelector('.modal');
+  if(m){gsap.to(m,{opacity:0,scale:.96,duration:.18,ease:'power2.in',onComplete:()=>ov.classList.remove('open')});}
+  else ov?.classList.remove('open');
+}
+function openModal(id) {
+  if (id === 'modal-premium') {
+    const formPanel    = document.getElementById('vip-form-panel');
+    const loadingPanel = document.getElementById('vip-loading-panel');
+    const errorEl      = document.getElementById('vip-form-error');
+    const input        = document.getElementById('vip-username-input');
+    if (formPanel)    formPanel.style.display    = '';
+    if (loadingPanel) loadingPanel.style.display = 'none';
+    if (errorEl)      errorEl.style.display      = 'none';
+    if (input)        input.value                = '';
+  }
+  playOpen();
+  const ov=document.getElementById(id);
+  ov.classList.add('open');
+  const m=ov.querySelector('.modal');
+  if(m){gsap.fromTo(m,{opacity:0,scale:.95},{opacity:1,scale:1,duration:.28,ease:'power3.out'});}
+}
 document.querySelectorAll('.overlay').forEach(o=>{
-  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+  o.addEventListener('click',e=>{if(e.target===o)closeModal(o.id);});
 });
 
 // ═══ INSCRIPTION HELPERS ═════════════════════════════════════════
@@ -186,18 +310,56 @@ function computePilotStats(pid,state){
   return{victorias:v,derrotas:d,eventos:ids.size,best};
 }
 
+
+// ═══ SHARE STATS ══════════════════════════════════════════════════
+let _shareStatsPid = null;
+function shareStats() {
+  // Requires html2canvas loaded via CDN
+  const card = document.getElementById('share-card');
+  if (!card || !_shareStatsPid) { toast('No hay datos para compartir.', 'err'); return; }
+  const state = load();
+  const j = state.jugadores.find(x => x.id === _shareStatsPid);
+  const s = computePilotStats(_shareStatsPid, state);
+  const tot = s.victorias + s.derrotas;
+  const pct = tot > 0 ? (s.victorias / tot * 100).toFixed(1) + '%' : '—';
+  // Populate card
+  document.getElementById('sc-name').textContent = j?.username || '???';
+  document.getElementById('sc-vip').style.display = j?.isVIP ? 'inline-flex' : 'none';
+  document.getElementById('sc-victorias').textContent = s.victorias;
+  document.getElementById('sc-derrotas').textContent = s.derrotas;
+  document.getElementById('sc-pct').textContent = pct;
+  document.getElementById('sc-eventos').textContent = s.eventos;
+  const bestArr = Object.entries(s.best);
+  document.getElementById('sc-best').textContent = bestArr.length ? bestArr.map(([c, t]) => `${TOPES[c]?.label||c}: ${t.toFixed(3)}"`).join('  ·  ') : 'Sin tiempos';
+  // Show card off-screen, take snapshot
+  card.style.display = 'flex';
+  if (typeof html2canvas !== 'undefined') {
+    html2canvas(card, { scale: 2, backgroundColor: null, useCORS: true }).then(canvas => {
+      card.style.display = 'none';
+      const link = document.createElement('a');
+      link.download = `PicadasAR_${j?.username || 'stats'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      playChime(); toast('✓ Imagen guardada', 'ok');
+    }).catch(() => { card.style.display = 'none'; toast('Error al generar imagen.', 'err'); });
+  } else {
+    card.style.display = 'none';
+    toast('html2canvas no cargó. Verificá tu conexión.', 'err');
+  }
+}
+
 // ═══ PILOTOS ═════════════════════════════════════════════════════
 function renderJugadores(){
-  const{jugadores}=load();
+  const state=load();
+  const{jugadores}=state;
   const q=(document.getElementById('searchPiloto')?.value||'').toLowerCase();
   const filtered=jugadores.filter(j=>j.username.toLowerCase().includes(q));
   const el=document.getElementById('jugadores-table');
   if(!filtered.length){
-    el.innerHTML=`<div class="empty"><div class="e-icon">🏎</div><p>${jugadores.length?'Sin resultados.':'Aún no hay pilotos.'}</p>${!_isGuest?'<button class="btn btn-primary" onclick="openAddPiloto()">+ AGREGAR EL PRIMER PILOTO</button>':''}</div>`;
+    el.innerHTML=`<div class="empty"><div class="e-icon">🏎</div><p>${jugadores.length?'Sin resultados.':'Aún no hay pilotos.'}</p>${_isAdmin?'<button class="btn btn-primary" onclick="openAddPiloto()">+ AGREGAR EL PRIMER PILOTO</button>':''}</div>`;
     return;
   }
-  const state=load();
-  el.innerHTML=`<table><thead><tr><th>#</th><th>USERNAME</th><th>V</th><th>D</th><th>%</th><th>MEJOR TIEMPO</th><th>EVENTOS</th>${!_isGuest?'<th>ACCIONES</th>':''}</tr></thead><tbody>${
+  el.innerHTML=`<table><thead><tr><th>#</th><th>USERNAME</th><th>V</th><th>D</th><th>%</th><th>MEJOR TIEMPO</th><th>EVENTOS</th>${_isAdmin?'<th>ACCIONES</th>':''}</tr></thead><tbody>${
     filtered.map((j,i)=>{
       const s=computePilotStats(j.id,state);
       const tot=s.victorias+s.derrotas;
@@ -206,43 +368,45 @@ function renderJugadores(){
       const bestStr=bestArr.length?bestArr.map(([c,t])=>`<span class="badge badge-clase">${c}</span> <span class="tiempo-val">${t.toFixed(3)}"</span>`).join(' '):' —';
       return`<tr class="pilot-row" onclick="openPilotHistory('${j.id}')">
         <td style="color:var(--text3);font-family:var(--mono);font-size:.8rem;">${i+1}</td>
-        <td><strong>${j.username}</strong></td>
+        <td><strong>${j.username}</strong>${j.isVIP?'<span class="badge-vip">VIP</span>':''}
+      <button class="admin-only" style="margin-left:1rem;background:transparent;border:1px solid rgba(245,197,24,.3);color:var(--accent);font-size:.65rem;padding:.1rem .4rem;border-radius:4px;cursor:pointer;" onclick="grantVip('${j.id}', event)">★ DAR VIP</button></td>
         <td style="color:var(--green);font-family:var(--mono);">${s.victorias}</td>
         <td style="color:var(--red);font-family:var(--mono);">${s.derrotas}</td>
         <td style="font-family:var(--mono);">${pct}</td>
         <td>${bestStr}</td>
         <td style="font-family:var(--mono);">${s.eventos}</td>
-        ${!_isGuest?`<td onclick="event.stopPropagation()">
+        ${_isAdmin?`<td onclick="event.stopPropagation()">
           <button class="btn btn-ghost btn-sm" onclick="openEditPiloto('${j.id}')">EDITAR</button>
-          <button class="btn btn-danger btn-sm" style="margin-left:.4rem;" onclick="confirmDelete('piloto','${j.id}','${j.username}')">✕</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:.4rem;" onclick="confirmDelete('piloto','${j.id}','${j.username.replace(/'/g,"\\'")}')">✕</button>
         </td>`:''}
       </tr>`;
     }).join('')
   }</tbody></table>`;
 }
-function openAddPiloto(){
+function openAddPiloto() { playOpen();
   document.getElementById('modal-piloto-title').textContent='NUEVO PILOTO';
-  document.getElementById('p-id').value='';document.getElementById('p-username').value='';
+  document.getElementById('p-id').value='';document.getElementById('p-username').value='';document.getElementById('p-vip').checked=false;
   openModal('modal-piloto');
 }
 function openEditPiloto(id){
   const j=load().jugadores.find(x=>x.id===id);if(!j)return;
   document.getElementById('modal-piloto-title').textContent='EDITAR PILOTO';
-  document.getElementById('p-id').value=j.id;document.getElementById('p-username').value=j.username;
+  document.getElementById('p-id').value=j.id;document.getElementById('p-username').value=j.username;document.getElementById('p-vip').checked=!!j.isVIP;
   openModal('modal-piloto');
 }
 function savePiloto(){
   const s=load(),id=document.getElementById('p-id').value;
   const username=document.getElementById('p-username').value.trim();
+  const isVIP=document.getElementById('p-vip').checked;
   if(!username){toast('El username no puede estar vacío.','err');return;}
   if(id){
     const idx=s.jugadores.findIndex(j=>j.id===id);
-    if(idx>=0)s.jugadores[idx]={...s.jugadores[idx],username};
-    toast(`✓ ${username} actualizado`,'ok');
+    if(idx>=0)s.jugadores[idx]={...s.jugadores[idx],username,isVIP};
+    playChime(); toast(`✓ ${username} actualizado`, 'ok');
   } else {
     if(s.jugadores.find(j=>j.username.toLowerCase()===username.toLowerCase())){toast('Username ya existe.','err');return;}
-    s.jugadores.push({id:uid(),username});
-    toast(`✓ ${username} registrado`,'ok');
+    s.jugadores.push({id:uid(),username,isVIP});
+    playChime(); toast(`✓ ${username} registrado`, 'ok');
   }
   save(s);closeModal('modal-piloto');renderJugadores();
 }
@@ -251,6 +415,7 @@ function savePiloto(){
 function openPilotHistory(pid){
   const state=load();
   const j=state.jugadores.find(x=>x.id===pid);if(!j)return;
+  _shareStatsPid=pid;
   const s=computePilotStats(pid,state);
   const tot=s.victorias+s.derrotas;
   const pct=tot>0?(s.victorias/tot*100).toFixed(1)+'%':'—';
@@ -300,6 +465,7 @@ function openPilotHistory(pid){
 
 // ═══ HELPERS ═════════════════════════════════════════════════════
 function getJugadorNombre(id){return load().jugadores.find(j=>j.id===id)?.username||'???';}
+function getJugadorLabel(id){const j=load().jugadores.find(x=>x.id===id);if(!j)return'???';return j.username+(j.isVIP?' <span class="badge-vip-sm">VIP</span>':'');}
 function confirmDelete(type,id,name){
   document.getElementById('delete-msg').textContent=
     type==='piloto'?`¿Eliminar al piloto "${name}"?`:
@@ -311,7 +477,7 @@ function confirmDelete(type,id,name){
     if(type==='torneo')s.torneos=s.torneos.filter(t=>t.id!==id);
     if(type==='llave')s.llaves=s.llaves.filter(l=>l.id!==id);
     logChange('ELIMINACIÓN',`${type.toUpperCase()} eliminado: "${name}"`);
-    save(s);closeModal('modal-delete');toast('Eliminado','ok');
+    save(s);closeModal('modal-delete');playChime(); toast('Eliminado', 'ok');
     if(type==='piloto')renderJugadores();
     if(type==='torneo')renderTorneos();
     if(type==='llave')renderLlaves();
@@ -366,11 +532,35 @@ function getInscripcionesFromModal(prefix){
 }
 
 // ═══ TORNEOS ═════════════════════════════════════════════════════
+
+function renderPremiumTorneos() {
+  const grid = document.getElementById('premium-grid');
+  if(!grid) return;
+  const list = load().torneos.filter(t => t.isPremium).reverse();
+  if(!list.length) { grid.innerHTML = '<div class="empty">No hay torneos High Stakes activos.</div>'; return; }
+  
+  grid.innerHTML = list.map(t => {
+    const act = t.estado === 'activo';
+    return `<div class="t-card t-card-premium" onclick="openTorneoDetail('${t.id}')" style="border-color:var(--accent);">
+      <div class="premium-tag">💰 HIGH STAKES / PRIZE POOL</div>
+      <div class="t-card-meta">
+        <span class="status-dot ${act?'s-act':'s-fin'}"></span> ${act?'EN CURSO':'FINALIZADO'} · ${t.fecha}
+      </div>
+      <div class="t-card-title" style="color:var(--accent)">${t.nombre}</div>
+      <div class="helper" style="margin-top:.5rem;">${t.notas||'...'}</div>
+    </div>`;
+  }).join('');
+  
+  if (typeof gsap !== 'undefined') {
+    gsap.fromTo('#premium-grid .t-card', {opacity:0, y:15}, {opacity:1, y:0, duration:0.3, stagger:0.05, ease:"power2.out"});
+  }
+}
+
 function renderTorneos(){
   const{torneos}=load();
   const el=document.getElementById('torneos-grid');
   if(!torneos.length){
-    el.innerHTML=`<div class="empty"><div class="e-icon">🏆</div><p>Aún no hay torneos.</p>${!_isGuest?'<button class="btn btn-primary" onclick="openAddTorneo()">+ CREAR PRIMER TORNEO</button>':''}</div>`;
+    el.innerHTML=`<div class="empty"><div class="e-icon">🏆</div><p>Aún no hay torneos.</p>${_isAdmin?'<button class="btn btn-primary" onclick="openAddTorneo()">+ CREAR PRIMER TORNEO</button>':''}</div>`;
     return;
   }
   el.innerHTML=`<div class="torneos-grid">${[...torneos].reverse().map(t=>{
@@ -378,21 +568,26 @@ function renderTorneos(){
     const done=t.bracket.rondas.reduce((a,r)=>a+r.filter(m=>m.estado==='completado').length,0);
     const bc=t.estado==='finalizado'?'badge-done':t.estado==='activo'?'badge-active':'badge-pending';
     const bl=t.estado==='finalizado'?'FINALIZADO':t.estado==='activo'?'EN CURSO':'PENDIENTE';
-    return`<div class="t-card" onclick="openTorneoDetail('${t.id}')">
+    return`<div class="t-card${t.isPremium?' t-card-premium':''}">
+      <div onclick="openTorneoDetail('${t.id}')" style="cursor:pointer;">
       <div class="t-card-name">${t.nombre}</div>
       ${t.notas?`<div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);margin-bottom:.5rem;">${t.notas}</div>`:''}
+      ${t.isPremium?'<div class="premium-tag">💰 PREMIUM — PRIZE POOL</div>':''}
       <div class="t-card-meta">
         <span class="badge ${bc}">${bl}</span>
         <span class="meta-pill">${t.jugadores.length} pilotos</span>
         <span class="meta-pill">${done}/${total} carreras</span>
         ${t.fecha?`<span class="meta-pill">${t.fecha}</span>`:''}
       </div>
-      ${t.campeon?`<div style="margin-top:.8rem;font-family:var(--mono);font-size:.75rem;color:var(--accent);">🏆 ${getJugadorNombre(t.campeon)}</div>`:''}
+      ${t.campeon?`<div style="margin-top:.8rem;font-size:.82rem;color:var(--gold);">🏆 ${getJugadorNombre(t.campeon)}</div>`:''}
+      </div>
+      ${(!_isAdmin&&!_isGuest&&t.estado==='activo')?`<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:.8rem;justify-content:center;" onclick="event.stopPropagation();openInscriptionRequest('${t.id}')">Solicitar inscripción</button>`:''}
     </div>`;
   }).join('')}</div>`;
 }
 
-function openAddTorneo(){
+function openAddTorneo() { playOpen();
+  setTimeout(()=>{ const p=document.getElementById('t-premium'); if(p){p.onchange=()=>renderChips('t');} }, 100);
   const{jugadores}=load();
   if(!jugadores.length){toast('Primero registrá pilotos.','err');return;}
   document.getElementById('t-nombre').value='';
@@ -407,18 +602,19 @@ function saveTorneo(){
   const nombre=document.getElementById('t-nombre').value.trim();
   const fecha=document.getElementById('t-fecha').value.trim();
   const notas=document.getElementById('t-notas').value.trim();
+  const isPremium=document.getElementById('t-premium')?.checked||false;
   const inscripciones=getInscripcionesFromModal('t');
   if(!nombre){toast('Poné un nombre.','err');return;}
   if(inscripciones.length<2){toast('Seleccioná al menos 2 pilotos.','err');return;}
   const bracket=generarBracketSimple(inscripciones.map(i=>i.pilotoId));
   const state=load();
   state.torneos.push({
-    id:uid(),nombre,fecha,notas,estado:'activo',
+    id:uid(),nombre,fecha,notas,isPremium,estado:'activo',
     jugadores:inscripciones,
     bracket:{rondas:bracket},campeon:null
   });
   logChange('TORNEO',`Torneo "${nombre}" creado con ${inscripciones.length} pilotos`);
-  save(state);toast(`✓ Torneo "${nombre}" creado`,'ok');
+  save(state);playChime(); toast(`✓ Torneo "${nombre}" creado`, 'ok');
   closeModal('modal-torneo');renderTorneos();
 }
 
@@ -484,7 +680,7 @@ function advanceBye(type,parentId,ri,mi){
   logChange('BYE',`${getJugadorNombre(realPlayer)} avanzó automáticamente (sin rival)`);
   save(state);
   if(isLlave)renderLlaveDetail();else renderTorneoDetail();
-  toast(`🏁 ${getJugadorNombre(realPlayer)} avanza (sin rival)`,'ok');
+  playChime(); toast(`🏁 ${getJugadorNombre(realPlayer)} avanza (sin rival)`, 'ok');
 }
 
 function openTorneoDetail(id){
@@ -519,9 +715,33 @@ function renderTorneoDetail(){
         <span class="meta-pill">${done}/${total} carreras</span>
         ${t.fecha?`<span class="meta-pill">📅 ${t.fecha}</span>`:''}
       </div></div>
-      ${!_isGuest?`<button class="btn btn-danger btn-sm" onclick="confirmDelete('torneo','${t.id}','${t.nombre}')">ELIMINAR</button>`:''}
+      <div style="display:flex;gap:.5rem;">
+        ${_isAdmin?`<button class="btn btn-ghost btn-sm" onclick="openEditTorneo('${t.id}')">✏ Editar</button>`:''}
+        ${_isAdmin?`<button class="btn btn-danger btn-sm" onclick="confirmDelete('torneo','${t.id}','${t.nombre}')">Eliminar</button>`:''}
+      </div>
     </div>
   </div>`;
+  // Inscripciones pendientes (solo admin)
+  if(_isAdmin){
+    const pending=_pendingInsc[t.id];
+    if(pending&&pending.length){
+      html+=`<div style="background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.2);border-radius:var(--radius);padding:1.2rem 1.4rem;margin-bottom:1.5rem;">
+        <div style="font-weight:700;font-size:.85rem;color:var(--blue);margin-bottom:.8rem;">Solicitudes de inscripción pendientes (${pending.length})</div>
+        ${pending.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.05);">
+          <div>
+            <span style="font-weight:600;">${r.username}</span>
+            <span class="meta-pill" style="margin-left:.4rem;">${r.vehiculo||'—'}</span>
+            <span class="meta-pill">${TOPES[r.clase]?.label||r.clase}</span>
+            <span style="font-size:.72rem;color:var(--text2);margin-left:.4rem;">${r.email}</span>
+          </div>
+          <div style="display:flex;gap:.4rem;">
+            <button class="btn btn-primary btn-sm" onclick="approveInscription('${t.id}','${r.id}')">Aprobar</button>
+            <button class="btn btn-danger btn-sm" onclick="rejectInscription('${t.id}','${r.id}')">Rechazar</button>
+          </div>
+        </div>`).join('')}
+      </div>`;
+    }
+  }
   if(t.campeon)html+=`<div style="background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;text-align:center;">
     <div style="font-size:2.5rem;margin-bottom:.5rem;">🏆</div>
     <div style="font-family:var(--mono);font-size:.75rem;color:var(--accent);letter-spacing:.3em;margin-bottom:.4rem;">CAMPEÓN DEL TORNEO</div>
@@ -544,7 +764,7 @@ function renderBracketCols(rondas,type,parentId,evento){
     html+=`<div class="b-round"><div class="b-round-title">${roundName(ri,numR)}</div><div class="b-matches">`;
     ronda.forEach((m,mi)=>{
       const canClick=m.estado==='pendiente'&&m.j1&&m.j2;
-      const canCorrect=m.estado==='completado'&&!_isGuest;
+      const canCorrect=m.estado==='completado'&&_isAdmin;
       // Detect "stuck" match: one real player, no opponent, not yet marked as BYE
       const isStuck=m.estado==='pendiente'&&((m.j1&&!m.j2)||(m.j2&&!m.j1));
       const advanceFn=type==='torneo'?`advanceBye('torneo','${parentId}',${ri},${mi})`:`advanceBye('llave','${parentId}',${ri},${mi})`;
@@ -560,16 +780,16 @@ function renderBracketCols(rondas,type,parentId,evento){
       html+=`<div class="b-match-wrap"><div ${clickAttr}>
         <div class="b-match-num">C${mi+1}${m.estado==='bye'?' · BYE':isStuck?' · SIN RIVAL':canClick?' · CLICK P/ REGISTRAR':''}</div>
         <div class="b-player ${p1c}">
-          <span class="b-player-name">${m.ganador===m.j1?'🏁 ':''}${m.j1?getJugadorNombre(m.j1):'<span class="b-tbd">POR DEFINIR</span>'}</span>
+          <span class="b-player-name">${m.ganador===m.j1?'🏁 ':''}${m.j1?getJugadorLabel(m.j1):'<span class="b-tbd">POR DEFINIR</span>'}</span>
           ${ins1?`<span style="font-family:var(--mono);font-size:.55rem;color:var(--text3);">${TOPES[ins1.clase]?.label||''}</span>`:''}
           ${t1?`<span class="b-player-time ${m.dq1?'dq':''}">${m.dq1?'DQ ':''} ${t1}</span>`:''}
         </div>
         ${m.j2!==null?`<div class="b-player ${p2c}">
-          <span class="b-player-name">${m.ganador===m.j2?'🏁 ':''}${m.j2?getJugadorNombre(m.j2):'<span class="b-tbd">POR DEFINIR</span>'}</span>
+          <span class="b-player-name">${m.ganador===m.j2?'🏁 ':''}${m.j2?getJugadorLabel(m.j2):'<span class="b-tbd">POR DEFINIR</span>'}</span>
           ${ins2?`<span style="font-family:var(--mono);font-size:.55rem;color:var(--text3);">${TOPES[ins2.clase]?.label||''}</span>`:''}
           ${t2?`<span class="b-player-time ${m.dq2?'dq':''}">${m.dq2?'DQ ':''} ${t2}</span>`:''}
         </div>`:`<div class="b-bye">BYE — avanza automáticamente</div>`}
-        ${isStuck&&!_isGuest?`<div class="b-correct-bar b-advance-bar" onclick="event.stopPropagation();${advanceFn}">⚡ BYE — AVANZAR AL SIGUIENTE ROUND</div>`:''}
+        ${isStuck&&_isAdmin?`<div class="b-correct-bar b-advance-bar" onclick="event.stopPropagation();${advanceFn}">⚡ BYE — AVANZAR AL SIGUIENTE ROUND</div>`:''}
         ${canCorrect?`<div class="b-correct-bar admin-only" onclick="event.stopPropagation();${correctFn}">✏ CORREGIR</div>`:''}
       </div></div>`;
     });
@@ -673,7 +893,7 @@ function saveLlave(){
   }
   state.llaves.push(llave);
   logChange('LLAVE',`Llave "${nombre}" creada con ${n} pilotos`+(c.hasRep?` (${c.repMatches} rep)`:'')); 
-  save(state);toast(`✓ Llave "${nombre}" generada`,'ok');
+  save(state);playChime(); toast(`✓ Llave "${nombre}" generada`, 'ok');
   closeModal('modal-llave');renderLlaves();
 }
 
@@ -685,7 +905,7 @@ function renderLlaves(){
   listV.style.display='';detV.style.display='none';
   const el=document.getElementById('llaves-grid');
   if(!llaves.length){
-    el.innerHTML=`<div class="empty"><div class="e-icon">🔑</div><p>Aún no hay llaves.</p>${!_isGuest?'<button class="btn btn-purple" onclick="openAddLlave()">+ CREAR PRIMERA LLAVE</button>':''}</div>`;
+    el.innerHTML=`<div class="empty"><div class="e-icon">🔑</div><p>Aún no hay llaves.</p>${_isAdmin?'<button class="btn btn-purple" onclick="openAddLlave()">+ CREAR PRIMERA LLAVE</button>':''}</div>`;
     return;
   }
   el.innerHTML=`<div class="torneos-grid">${[...llaves].reverse().map(lv=>{
@@ -728,7 +948,7 @@ function renderLlaveDetail(){
         <span class="meta-pill">${lv.n} corredores</span>
         ${lv.hasRep?`<span class="badge badge-rep">REP ${dR}/${tR}</span>`:''}
       </div></div>
-      ${!_isGuest?`<button class="btn btn-danger btn-sm" onclick="confirmDelete('llave','${lv.id}','${lv.nombre}')">ELIMINAR</button>`:''}
+      ${_isAdmin?`<button class="btn btn-danger btn-sm" onclick="confirmDelete('llave','${lv.id}','${lv.nombre}')">ELIMINAR</button>`:''}
     </div>
   </div>`;
   if(lv.campeon)html+=`<div style="background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;text-align:center;">
@@ -742,7 +962,7 @@ function renderLlaveDetail(){
     <div class="rep-section-body"><div class="rep-matches-grid">${
       lv.repechajeMatches.map((m,mi)=>{
         const canClick=m.estado==='pendiente';
-        const canCorrect=m.estado==='completado'&&!_isGuest;
+        const canCorrect=m.estado==='completado'&&_isAdmin;
         const p1c=m.estado==='completado'?(m.ganador===m.j1?'winner':'loser'):'';
         const p2c=m.estado==='completado'?(m.ganador===m.j2?'winner':'loser'):'';
         const t1=m.tiempo1!=null?m.tiempo1.toFixed(3)+'"':'';
@@ -769,7 +989,7 @@ function renderBracketColsLlave(lv){
     ronda.forEach((m,mi)=>{
       const waiting=m.estado==='esperando-rep';
       const canClick=!waiting&&m.estado==='pendiente'&&m.j1&&m.j2;
-      const canCorrect=m.estado==='completado'&&!_isGuest;
+      const canCorrect=m.estado==='completado'&&_isAdmin;
       const p1name=m.j1?getJugadorNombre(m.j1):null;
       const p2name=m.j2?getJugadorNombre(m.j2):null;
       let p1c='',p2c='';
@@ -951,7 +1171,7 @@ function saveResultTorneo(tid,ri,mi,t1,t2,isCorr){
   } else {t.estado='finalizado';t.campeon=ganador;}
   if(isCorr)logChange('CORRECCIÓN',`Torneo "${t.nombre}" R${ri+1} C${mi+1} corregido`);
   save(state);closeModal('modal-result');renderTorneoDetail();
-  toast(`🏁 ${getJugadorNombre(ganador)} avanza`,'ok');
+  playChime(); toast(`🏁 ${getJugadorNombre(ganador)} avanza`, 'ok');
 }
 
 function saveResultLlaveRep(lid,repIdx,t1,t2,isCorr){
@@ -972,7 +1192,7 @@ function saveResultLlaveRep(lid,repIdx,t1,t2,isCorr){
   }
   if(isCorr)logChange('CORRECCIÓN',`Llave "${lv.nombre}" Rep#${repIdx+1} corregido`);
   save(state);closeModal('modal-result');renderLlaveDetail();
-  toast(`🟣 ${getJugadorNombre(ganador)} avanza al bracket`,'ok');
+  playChime(); toast(`🟣 ${getJugadorNombre(ganador)} avanza al bracket`, 'ok');
 }
 
 function saveResultLlaveMain(lid,ri,mi,t1,t2,isCorr){
@@ -991,7 +1211,7 @@ function saveResultLlaveMain(lid,ri,mi,t1,t2,isCorr){
   } else {lv.estado='finalizado';lv.campeon=ganador;}
   if(isCorr)logChange('CORRECCIÓN',`Llave "${lv.nombre}" R${ri+1} C${mi+1} corregido`);
   save(state);closeModal('modal-result');renderLlaveDetail();
-  toast(`🏁 ${getJugadorNombre(ganador)} avanza`,'ok');
+  playChime(); toast(`🏁 ${getJugadorNombre(ganador)} avanza`, 'ok');
 }
 
 // Stats are computed on-the-fly via computePilotStats, so these
@@ -999,6 +1219,60 @@ function saveResultLlaveMain(lid,ri,mi,t1,t2,isCorr){
 // since we compute from matches). But we keep them as no-ops for safety.
 function revertMatchStats(state,m,tope1,tope2){/* computed on-the-fly */}
 function applyMatchStats(state,m,tope1,tope2){/* computed on-the-fly */}
+
+// ═══ VIP SUBSCRIPTION FLOW ═══════════════════════════════════════
+// Llama a la Cloud Function 'createSubscription', obtiene el link de
+// Mercado Pago y redirige al usuario para completar el pago.
+async function startVIPSubscription() {
+  const input    = document.getElementById('vip-username-input');
+  const errorEl  = document.getElementById('vip-form-error');
+  const formPanel    = document.getElementById('vip-form-panel');
+  const loadingPanel = document.getElementById('vip-loading-panel');
+
+  const username = input?.value?.trim();
+  errorEl.style.display = 'none';
+
+  if (!username || username.length < 2) {
+    errorEl.textContent   = 'Ingresá tu username de Picadas AR.';
+    errorEl.style.display = '';
+    return;
+  }
+
+  // Mostrar spinner y bloquear botón
+  formPanel.style.display    = 'none';
+  loadingPanel.style.display = '';
+
+  try {
+    const createSubscription = functions.httpsCallable('createSubscription');
+    const result = await createSubscription({ username });
+
+    const { init_point } = result.data;
+    if (!init_point) throw new Error('No se recibió link de pago.');
+
+    // Abrir MP en nueva pestaña
+    window.open(init_point, '_blank', 'noopener,noreferrer');
+
+    // Restaurar modal con mensaje de espera
+    loadingPanel.innerHTML = `
+      <div style="text-align:center;padding:.5rem 0;">
+        <div style="font-size:1.5rem;margin-bottom:.5rem;">✅</div>
+        <div style="font-family:var(--mono);font-size:.75rem;color:var(--green);letter-spacing:.05em;margin-bottom:.3rem;">LINK ABIERTO EN NUEVA PESTAÑA</div>
+        <div style="font-family:var(--mono);font-size:.68rem;color:var(--text2);">Una vez que completes el pago, tu VIP se activará automáticamente en minutos.</div>
+      </div>`;
+  } catch (err) {
+    // Restaurar formulario y mostrar error
+    formPanel.style.display    = '';
+    loadingPanel.style.display = 'none';
+    const msg = err?.message?.includes('not-found')
+      ? `Piloto no encontrado. Verificá que el username esté registrado exactamente como aparece en la tabla de Pilotos.`
+      : err?.message?.includes('already-exists')
+      ? 'Este piloto ya tiene membresía VIP activa.'
+      : `Error: ${err.message || 'Intentalo de nuevo.'}`;
+    errorEl.textContent   = msg;
+    errorEl.style.display = '';
+  }
+}
+
 
 // ═══ STATS ═══════════════════════════════════════════════════════
 function renderStats(){
@@ -1083,3 +1357,101 @@ function renderStats(){
   }
   el.innerHTML=html;
 }
+
+// ═══ EDITAR TORNEO ════════════════════════════════════════════════
+function openEditTorneo(id){
+  const t=load().torneos.find(x=>x.id===id);if(!t)return;
+  document.getElementById('et-id').value=id;
+  document.getElementById('et-nombre').value=t.nombre;
+  document.getElementById('et-fecha').value=t.fecha||'';
+  document.getElementById('et-notas').value=t.notas||'';
+  openModal('modal-edit-torneo');
+}
+function saveEditTorneo(){
+  const id=document.getElementById('et-id').value;
+  const nombre=document.getElementById('et-nombre').value.trim();
+  const fecha=document.getElementById('et-fecha').value.trim();
+  const notas=document.getElementById('et-notas').value.trim();
+  if(!nombre){toast('El nombre no puede estar vacío.','err');return;}
+  const state=load();
+  const idx=state.torneos.findIndex(x=>x.id===id);
+  if(idx<0)return;
+  state.torneos[idx].nombre=nombre;
+  state.torneos[idx].fecha=fecha;
+  state.torneos[idx].notas=notas;
+  logChange('EDITAR',`Torneo "${nombre}" editado`);
+  save(state);
+  closeModal('modal-edit-torneo');
+  renderTorneoDetail();
+  toast('Torneo actualizado','ok');
+}
+
+// ═══ INSCRIPCIONES DE USUARIOS (Google) ═══════════════════════════
+let _pendingInsc={};
+let _inscListener=null;
+
+function startInscSync(){
+  if(_inscListener)return;
+  _inscListener=inscRef.on('value',snap=>{
+    _pendingInsc={};
+    const data=snap.val()||{};
+    Object.entries(data).forEach(([tid,reqs])=>{
+      const list=Object.entries(reqs||{})
+        .filter(([,r])=>r.estado==='pendiente')
+        .map(([rid,r])=>({...r,id:rid}));
+      if(list.length)_pendingInsc[tid]=list;
+    });
+    // Refrescar si hay un torneo abierto
+    if(activeTorneoId)renderTorneoDetail();
+  });
+}
+
+function openInscriptionRequest(tid){
+  const t=load().torneos.find(x=>x.id===tid);if(!t)return;
+  document.getElementById('ir-tid').value=tid;
+  document.getElementById('ir-torneo-nombre').textContent=t.nombre;
+  document.getElementById('ir-username').value='';
+  document.getElementById('ir-vehiculo').value='';
+  document.getElementById('ir-clase').value='L1';
+  openModal('modal-inscripcion-req');
+}
+
+function saveInscriptionRequest(){
+  const tid=document.getElementById('ir-tid').value;
+  const username=document.getElementById('ir-username').value.trim();
+  const vehiculo=document.getElementById('ir-vehiculo').value.trim();
+  const clase=document.getElementById('ir-clase').value;
+  if(!username){toast('Ingresá tu username de Roblox.','err');return;}
+  const user=auth.currentUser;
+  if(!user){toast('Debés estar logueado.','err');return;}
+  const req={
+    uid:user.uid, email:user.email||user.displayName||'',
+    username, vehiculo, clase,
+    fecha:new Date().toLocaleString('es-AR'),
+    estado:'pendiente'
+  };
+  inscRef.child(tid).push(req)
+    .then(()=>{closeModal('modal-inscripcion-req');toast('Solicitud enviada. El admin la revisará.','ok');})
+    .catch(err=>{toast('Error al enviar solicitud.','err');console.error(err);});
+}
+
+function approveInscription(tid,reqId){
+  inscRef.child(tid+'/'+reqId+'/estado').set('aprobado');
+  // Agregar piloto a la lista general si no existe
+  const req=(_pendingInsc[tid]||[]).find(r=>r.id===reqId);
+  if(!req)return;
+  const state=load();
+  if(!state.jugadores.find(j=>j.username.toLowerCase()===req.username.toLowerCase())){
+    state.jugadores.push({id:uid(),username:req.username,isVIP:false});
+    save(state);
+  }
+  toast(`${req.username} aprobado y agregado a pilotos.`,'ok');
+}
+
+function rejectInscription(tid,reqId){
+  inscRef.child(tid+'/'+reqId+'/estado').set('rechazado');
+  toast('Solicitud rechazada.','info');
+}
+
+// Iniciar sync de inscripciones cuando hay usuario autenticado
+auth.onAuthStateChanged(u=>{if(u)startInscSync();else{if(_inscListener){inscRef.off('value',_inscListener);_inscListener=null;}_pendingInsc={};};});

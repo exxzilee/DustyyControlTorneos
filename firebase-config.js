@@ -23,12 +23,28 @@
 //     {
 //       "rules": {
 //         "data": {
+//           ".read": true,
+//           ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || auth.token.firebase.sign_in_provider === 'password')"
+//         },
+//         "admins": {
 //           ".read": "auth != null",
-//           ".write": "auth != null"
+//           ".write": false
+//         },
+//         "inscriptions": {
+//           ".read": "auth != null",
+//           "$tid": {
+//             "$rid": {
+//               ".write": "auth != null"
+//             }
+//           }
 //         }
 //       }
 //     }
 //     → Publicar
+//
+// NOTA: Para dar rol admin a un usuario Google:
+//   En Firebase Console → Realtime Database → agregar nodo:
+//   admins / {UID del usuario} = true
 //
 // ═══════════════════════════════════════════════════════════════════
 
@@ -44,6 +60,11 @@ const firebaseConfig = {
 
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db   = firebase.database();
-const dbRef = db.ref('data');
+const auth           = firebase.auth();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+const db             = firebase.database();
+const dbRef          = db.ref('data');
+const inscRef        = db.ref('inscriptions');
+const functions      = firebase.functions();
+// Para desarrollo local con emulador, descomentar la línea siguiente:
+// functions.useEmulator('localhost', 5001);

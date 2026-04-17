@@ -1,0 +1,11 @@
+node_modules/
+.git/
+*.log
+dist/
+build/
+*.svg
+.env
+package-lock.json
+*.min.js
+*.min.css
+.gemini/
