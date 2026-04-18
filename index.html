@@ -40,7 +40,7 @@
   </nav>
   <div class="header-right">
     <div class="user-badge"><span class="dot"></span> <span id="user-email">—</span></div>
-    <button class="btn-premium" onclick="openModal('modal-premium')">PREMIUM &#9733;</button>
+    <button class="btn-premium" onclick="openModal('modal-premium')" style="opacity:0.75;filter:blur(0.6px);">PREMIUM (PRÓXIMAMENTE)</button>
     <button class="btn-logout" id="btn-logout" onclick="logout()">Salir</button>
   </div>
 </header>
@@ -104,7 +104,7 @@
       <div style="font-family:var(--body);font-size:.9rem;color:var(--text2);margin-bottom:2rem;max-width:500px;margin-inline:auto;">
         Esta área contiene los Torneos High Stakes (con premio real en R$ o AR$). Para inscribirte o ver la información detallada, necesitás una Membresía PRO.
       </div>
-      <button class="btn-premium" onclick="openModal('modal-premium')" style="padding:.8rem 2rem;font-size:.85rem;">ADQUIRIR MEMBRESÍA VIP</button>
+      <button class="btn-premium" onclick="openModal('modal-premium')" style="padding:.8rem 2rem;font-size:.85rem;opacity:0.75;filter:blur(0.6px);">ADQUIRIR MEMBRESÍA (PRÓXIMAMENTE)</button>
     </div>
     
     <div id="premium-unlocked">
@@ -317,7 +317,14 @@
 
 <!-- ══ MODAL PREMIUM (Suscripciones) ══════════════════════════════════════ -->
 <div class="overlay" id="modal-premium">
-  <div class="modal" style="width:620px;">
+  <div class="modal" style="width:620px; position:relative;">
+    <!-- Overlay Próximamente -->
+    <div style="position:absolute;inset:0;background:rgba(17,17,42,0.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:10;display:flex;align-items:center;justify-content:center;flex-direction:column;border-radius:inherit;">
+      <div style="font-family:var(--display);font-size:2.2rem;font-weight:700;color:var(--red);letter-spacing:.1em;text-shadow:0 0 20px rgba(244,63,94,0.4);">PRÓXIMAMENTE</div>
+      <div style="font-family:var(--body);font-size:.95rem;color:var(--text);margin-top:.5rem;">Esta función aún no está disponible.</div>
+      <button class="btn btn-ghost" style="margin-top:2rem;" onclick="closeModal('modal-premium')">VOLVER</button>
+    </div>
+
     <div class="modal-title" style="font-size:1.5rem;color:var(--accent);">&#9733; MEMBRESÍA VIP DE PICADAS AR</div>
     <p style="color:var(--text2);font-size:.95rem;margin-bottom:1.5rem;line-height:1.6;">Llevá tu carrera al siguiente nivel. Uniéndote como Piloto VIP no solo apoyás al servidor, sino que desbloqueás herramientas exclusivas para dominar la pista.</p>
 
