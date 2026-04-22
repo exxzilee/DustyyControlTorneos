@@ -3,7 +3,8 @@
 // ═══ ESTADO GLOBAL ═══════════════════════════════════════════════
 let _authMode = 'login'; // 'login' | 'register'
 let _isGuest  = false;
-let _isAdmin  = false;   // true solo para email/password o Google UID en /admins
+let _isAdmin  = false;   // true si el UID del usuario está en /admins
+let _userRole = null;   // 'superadmin' | 'admin' | 'mod' | null
 
 // ═══ SOUNDS ════════════════════════════════════════════════════════
 const sndClick = new Audio('audio/click.mp3'); sndClick.volume = 0.2;
@@ -84,12 +85,57 @@ async function saveGrantAdmin(uid) {
     playChime();
     toast('✓ Admin otorgado correctamente', 'ok');
     document.getElementById('ga-uid').value = '';
-    closeModal('modal-grant-admin');
     logChange('ADMIN', `Privilegios de admin otorgados al UID ${uid}`);
+    loadAdminsList();
   } catch (err) {
     console.error('Error al otorgar admin:', err);
     toast('Error al otorgar admin. Verificá tu conexión.', 'err');
   }
+}
+
+async function loadAdminsList() {
+  const container = document.getElementById('ga-admin-list');
+  if (!container) return;
+  container.innerHTML = '<div style="color:var(--text3);font-size:.82rem;padding:.4rem 0;">Cargando...</div>';
+  try {
+    const snap = await db.ref('admins').once('value');
+    const admins = snap.val() || {};
+    const uids = Object.keys(admins).filter(k => admins[k] === true);
+    if (!uids.length) {
+      container.innerHTML = '<div style="color:var(--text3);font-size:.82rem;padding:.4rem 0;">No hay admins registrados.</div>';
+      return;
+    }
+    const currentUid = auth.currentUser?.uid;
+    container.innerHTML = uids.map(u => {
+      const isSelf = u === currentUid;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="font-family:var(--mono);font-size:.75rem;color:${isSelf?'var(--accent)':'var(--text2)'};word-break:break-all;">${u}${isSelf?' <span style="color:var(--text3);font-size:.65rem;">(vos)</span>':''}</span>
+        ${isSelf
+          ? '<span style="font-size:.7rem;color:var(--text3);flex-shrink:0;">Tu cuenta</span>'
+          : `<button class="btn btn-danger btn-sm" style="flex-shrink:0;font-size:.7rem;" onclick="revokeAdmin('${u}')">REVOCAR</button>`}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--red);font-size:.82rem;padding:.4rem 0;">Error al cargar lista.</div>';
+  }
+}
+
+window.revokeAdmin = async function(uid) {
+  if (!confirm(`¿Revocar privilegios de admin al UID\n${uid}?`)) return;
+  try {
+    await db.ref('admins/' + uid).remove();
+    toast('Admin revocado', 'ok');
+    logChange('ADMIN', `Privilegios de admin revocados al UID ${uid}`);
+    loadAdminsList();
+  } catch(e) {
+    console.error(e);
+    toast('Error al revocar admin.', 'err');
+  }
+};
+
+function openAdminPanel() {
+  openModal('modal-grant-admin');
+  loadAdminsList();
 }
 
 // ═══ INIT ════════════════════════════════════════════════════════
@@ -143,9 +189,7 @@ function doAuth(){
   const errEl=document.getElementById('auth-error');
   if(!email||!pass){errEl.textContent='Completá email y contraseña.';return;}
   errEl.textContent='';
-  // Email/password siempre es admin (solo se permite login, la creación fue deshabilitada)
   auth.signInWithEmailAndPassword(email,pass)
-    .then(()=>{ _isAdmin=true; })
     .catch(err=>{
       const m={'auth/user-not-found':'No existe esa cuenta.','auth/wrong-password':'Contraseña incorrecta.',
         'auth/invalid-credential':'Credenciales inválidas.','auth/email-already-in-use':'Email ya registrado.',
@@ -163,15 +207,35 @@ function doGoogleAuth(){
 }
 
 async function checkAdminRole(user){
-  if(!user)return false;
-  // Email/password → siempre admin
+  if(!user){_isAdmin=false;_userRole=null;return false;}
+  // Migración única: si el usuario inició sesión con email/password y aún no
+  // está en admins/, se registra automáticamente. Esto garantiza que el admin
+  // original (que no tenía UID en la DB) quede registrado al primer login.
+  // Una vez completada la migración, este bloque puede eliminarse junto con
+  // la cláusula sign_in_provider==='password' de las Firebase Rules.
   const provider=user.providerData[0]?.providerId;
-  if(provider==='password'){_isAdmin=true;return true;}
-  // Google → verificar en /admins/{uid}
+  if(provider==='password'){
+    try{
+      const existsSnap=await db.ref('admins/'+user.uid).once('value');
+      if(existsSnap.val()!==true){
+        await db.ref('admins/'+user.uid).set(true);
+        console.info('[admin] UID registrado en /admins (migración inicial)');
+      }
+    }catch(e){console.warn('[admin] No se pudo auto-registrar UID:',e);}
+  }
+  // Fuente de verdad: siempre verificar contra la DB
   try{
     const snap=await db.ref('admins/'+user.uid).once('value');
     _isAdmin=snap.val()===true;
   }catch(e){_isAdmin=false;}
+  // Cargar rol jerárquico (requiere nodo roles/ en Firebase Rules)
+  _userRole=null;
+  if(_isAdmin){
+    try{
+      const roleSnap=await db.ref('roles/'+user.uid).once('value');
+      _userRole=roleSnap.val()||'admin';
+    }catch(e){_userRole='admin';}
+  }
   return _isAdmin;
 }
 
@@ -207,7 +271,10 @@ function updateUserBlock(label, role) {
     else                       { roleEl.classList.add('spectator'); }
   }
   if (roleTxt) {
-    roleTxt.textContent = role === 'admin' ? 'ADMINISTRADOR' : (role === 'guest' ? 'ESPECTADOR' : 'CONECTADO');
+    const roleLabels = {superadmin:'SUPER ADMIN',admin:'ADMINISTRADOR',mod:'MODERADOR'};
+    roleTxt.textContent = role === 'admin'
+      ? (roleLabels[_userRole] || 'ADMINISTRADOR')
+      : (role === 'guest' ? 'ESPECTADOR' : 'CONECTADO');
   }
   if (adminBtn) {
     adminBtn.style.display = role === 'admin' ? '' : 'none';

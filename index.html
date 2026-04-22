@@ -58,7 +58,7 @@
       </div>
     </div>
     <button class="btn-premium" onclick="openModal('modal-premium')" style="opacity:0.78;">★ VIP</button>
-    <button class="admin-only" id="btn-admin-settings" onclick="openModal('modal-grant-admin')" style="background:transparent;border:1px solid rgba(10,132,255,.3);color:var(--blue);padding:.5rem .9rem;font-size:.75rem;border-radius:4px;cursor:pointer;display:none;">⚙ ADMIN</button>
+    <button class="admin-only" id="btn-admin-settings" onclick="openAdminPanel()" style="background:transparent;border:1px solid rgba(10,132,255,.3);color:var(--blue);padding:.5rem .9rem;font-size:.75rem;border-radius:4px;cursor:pointer;display:none;">⚙ ADMIN</button>
     <button class="btn-logout" id="btn-logout" onclick="logout()">Salir</button>
   </div>
 </header>
@@ -412,20 +412,34 @@
   </div>
 </div>
 
-<!-- Grant Admin Modal -->
+<!-- Admin Panel Modal -->
 <div class="overlay" id="modal-grant-admin">
-  <div class="modal" style="width:480px;">
-    <div class="modal-title">OTORGAR ACCESO DE ADMIN</div>
-    <div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem;line-height:1.6;">
-      Ingresá el UID del usuario que querés hacer admin. El usuario puede encontrar su UID en la consola del navegador después de iniciar sesión.
+  <div class="modal" style="width:520px;max-height:85vh;overflow-y:auto;">
+    <div class="modal-title">⚙ PANEL DE ADMINISTRACIÓN</div>
+
+    <!-- Sección: admins actuales -->
+    <div style="margin-bottom:1.8rem;">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--text3);margin-bottom:.8rem;">ADMINISTRADORES ACTUALES</div>
+      <div id="ga-admin-list" style="min-height:2rem;">
+        <div style="color:var(--text3);font-size:.82rem;padding:.4rem 0;">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Separador -->
+    <div style="height:1px;background:var(--glass-border);margin-bottom:1.6rem;"></div>
+
+    <!-- Sección: otorgar admin -->
+    <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--text3);margin-bottom:.9rem;">OTORGAR ACCESO DE ADMIN</div>
+    <div style="font-size:.83rem;color:var(--text2);margin-bottom:1rem;line-height:1.6;">
+      Ingresá el UID del usuario a promover. El usuario puede encontrarlo en la consola del navegador después de iniciar sesión.
     </div>
     <div class="form-row">
       <label>UID del usuario</label>
-      <input type="text" id="ga-uid" placeholder="Ej: A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6" style="font-family:var(--mono);font-size:.85rem;">
-      <div class="helper" style="margin-top:.4rem;">Para obtener tu UID, abrí la consola (F12) y escribí: <code style="background:rgba(0,0,0,.3);padding:.2rem .4rem;border-radius:3px;">firebase.auth().currentUser.uid</code></div>
+      <input type="text" id="ga-uid" placeholder="Ej: A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6" style="font-family:var(--mono);font-size:.83rem;">
+      <div class="helper" style="margin-top:.4rem;">Consola del navegador (F12): <code style="background:rgba(0,0,0,.3);padding:.2rem .4rem;border-radius:3px;">firebase.auth().currentUser.uid</code></div>
     </div>
-    <div class="modal-actions" style="margin-top:1.5rem;">
-      <button class="btn btn-ghost" onclick="closeModal('modal-grant-admin')">CANCELAR</button>
+    <div class="modal-actions" style="margin-top:1.4rem;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-grant-admin')">CERRAR</button>
       <button class="btn btn-primary" onclick="confirmGrantAdmin()">OTORGAR ADMIN</button>
     </div>
   </div>
