@@ -3,16 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PICADAS AR — Torneos</title>
+  <title>PICADAS ARGENTINAS — DUSTYY</title>
   <meta name="description" content="Gestor de torneos de picadas argentinas en Roblox. Registrá pilotos, armá brackets y seguí estadísticas en tiempo real.">
-  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700&family=Varela+Round&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="logotipos/LogoWhite512.png">
   <link rel="stylesheet" href="style.css">
   <!-- GSAP -->
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <!-- html2canvas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
+
+<!-- Liquid Glass background blobs -->
+<div class="lg-blob lg-blob-1" aria-hidden="true"></div>
+<div class="lg-blob lg-blob-2" aria-hidden="true"></div>
+<div class="lg-blob lg-blob-3" aria-hidden="true"></div>
 
 <!-- ══════════════════════ LOADING SCREEN ══ -->
 <div class="loading-screen" id="loading-screen" style="display:none;">
@@ -29,18 +36,29 @@
 <div class="race-bar"></div>
 <header>
   <div class="logo">
-    <div class="logo-main">&#9651; PICADAS AR</div>
-    <div class="logo-sub">GESTOR DE TORNEOS — ROBLOX</div>
+    <img class="logo-img" src="logotipos/LogoWhite512.png" alt="Dusty">
+    <div class="logo-text">
+      <div class="logo-main"><span class="brand-mark">DUSTY</span> ·  PICADAS ARGENTINAS</div>
+      <div class="logo-sub">COMUNIDAD · PISTA · RANKING</div>
+    </div>
   </div>
   <nav>
     <button class="active" id="nav-jugadores" onclick="goTab('jugadores')">Pilotos</button>
     <button id="nav-torneos" onclick="goTab('torneos')">Torneos</button>
-    <button id="nav-premium" onclick="goTab('premium')">Premium ($$)</button>
+    <button id="nav-premium" onclick="goTab('premium')">Premium</button>
     <button id="nav-stats" onclick="goTab('stats')">Estadísticas</button>
+    <button class="admin-only" id="nav-analiticas" onclick="goTab('analiticas')">Analíticas</button>
   </nav>
   <div class="header-right">
-    <div class="user-badge"><span class="dot"></span> <span id="user-email">—</span></div>
-    <button class="btn-premium" onclick="openModal('modal-premium')" style="opacity:0.75;filter:blur(0.6px);">PREMIUM (PRÓXIMAMENTE)</button>
+    <div class="user-block">
+      <div class="user-avatar" id="user-avatar">D</div>
+      <div class="user-info">
+        <div class="user-email" id="user-email">—</div>
+        <div class="user-role" id="user-role"><span class="dot"></span><span id="user-role-text">CONECTADO</span></div>
+      </div>
+    </div>
+    <button class="btn-premium" onclick="openModal('modal-premium')" style="opacity:0.78;">★ VIP</button>
+    <button class="admin-only" id="btn-admin-settings" onclick="openModal('modal-grant-admin')" style="background:transparent;border:1px solid rgba(10,132,255,.3);color:var(--blue);padding:.5rem .9rem;font-size:.75rem;border-radius:4px;cursor:pointer;display:none;">⚙ ADMIN</button>
     <button class="btn-logout" id="btn-logout" onclick="logout()">Salir</button>
   </div>
 </header>
@@ -50,11 +68,31 @@
 <!-- ══════════════════════ PILOTOS ══ -->
 <section id="jugadores" class="active">
   <div class="container">
+    <!-- Hero -->
+    <div class="hero" data-glass>
+      <div class="hero-grid">
+        <div>
+          <div class="hero-eyebrow"><span class="pulse"></span>Temporada 2026</div>
+          <h1 class="hero-title">La pista, los pilotos <span class="accent">y el ranking.</span></h1>
+          <p class="hero-desc">El espacio interno de la comunidad Dusty. Inscribite a torneos, seguí los brackets en vivo y compará tus tiempos con el resto de la grilla. Los organizadores arman — vos corrés.</p>
+        </div>
+        <div class="hero-stats" id="hero-stats">
+          <div class="hero-stat"><div class="hero-stat-val" id="hs-pilotos">—</div><div class="hero-stat-lbl">Pilotos activos</div></div>
+          <div class="hero-stat"><div class="hero-stat-val" id="hs-torneos">—</div><div class="hero-stat-lbl">Torneos abiertos</div></div>
+          <div class="hero-stat"><div class="hero-stat-val" id="hs-vips">—</div><div class="hero-stat-lbl">Pilotos VIP</div></div>
+          <div class="hero-stat"><div class="hero-stat-val" id="hs-eventos">—</div><div class="hero-stat-lbl">Eventos jugados</div></div>
+        </div>
+      </div>
+    </div>
+
     <div class="s-head">
-      <div class="s-title">PILOTOS REGISTRADOS</div>
+      <div>
+        <div class="s-title"><span class="dash"></span>Pilotos registrados</div>
+        <div class="s-sub">Todos los corredores activos del circuito.</div>
+      </div>
       <div style="display:flex;gap:.7rem;align-items:center;">
-        <input id="searchPiloto" class="btn btn-ghost" type="text" placeholder="🔍  Buscar…" style="width:200px;font-family:var(--body);font-size:.9rem;" oninput="renderJugadores()">
-        <button class="btn btn-primary admin-only" onclick="openAddPiloto()">+ AGREGAR PILOTO</button>
+        <input id="searchPiloto" class="btn btn-ghost" type="text" placeholder="🔍  Buscar piloto…" style="width:220px;font-family:var(--body);font-size:.9rem;text-align:left;" oninput="renderJugadores()">
+        <button class="btn btn-primary admin-only" onclick="openAddPiloto()">+ Agregar Piloto</button>
       </div>
     </div>
     <div id="jugadores-table" class="table-wrap"></div>
@@ -66,8 +104,11 @@
   <div class="container">
     <div id="torneos-list-view">
       <div class="s-head">
-        <div class="s-title">TORNEOS</div>
-        <button class="btn btn-primary admin-only" onclick="openAddTorneo()">+ NUEVO TORNEO</button>
+        <div>
+          <div class="s-title"><span class="dash"></span>Torneos</div>
+          <div class="s-sub">Crónica viva de cada bracket: en curso, próximos y finalizados.</div>
+        </div>
+        <button class="btn btn-primary admin-only" onclick="openAddTorneo()">+ Nuevo torneo</button>
       </div>
       <div id="torneos-grid"></div>
     </div>
@@ -83,8 +124,10 @@
   <div class="container">
     <div id="llaves-list-view">
       <div class="s-head">
-        <div class="s-title">LLAVES</div>
-        <!-- Creación manual deshabilitada: las llaves se generan automáticamente desde Torneos -->
+        <div>
+          <div class="s-title"><span class="dash"></span>Llaves</div>
+          <div class="s-sub">Brackets generados automáticamente desde cada torneo.</div>
+        </div>
       </div>
       <div id="llaves-grid"></div>
     </div>
@@ -98,8 +141,8 @@
 <!-- ══════════════════════ PREMIUM (High Stakes) ══ -->
 <section id="premium">
   <div class="container">
-    <div id="premium-locked" style="display:none;text-align:center;padding:4rem 1rem;background:var(--bg3);border:1px solid rgba(245,197,24,.1);border-radius:var(--radius);margin-top:2rem;">
-      <div style="font-size:3rem;margin-bottom:1rem;color:var(--accent);text-shadow:0 0 20px rgba(245,197,24,.4);">&#9733;</div>
+    <div id="premium-locked" style="display:none;text-align:center;padding:4rem 1rem;background:var(--bg2);border:1px solid rgba(0,0,0,0.07);border-radius:var(--radius);margin-top:2rem;backdrop-filter:var(--blur-sm);-webkit-backdrop-filter:var(--blur-sm);box-shadow:var(--shadow),var(--glass-in);">
+      <div style="font-size:3rem;margin-bottom:1rem;color:var(--gold);">&#9733;</div>
       <div class="s-title" style="margin-bottom:.5rem;">SECCIÓN EXCLUSIVA PARA PILOTOS VIP</div>
       <div style="font-family:var(--body);font-size:.9rem;color:var(--text2);margin-bottom:2rem;max-width:500px;margin-inline:auto;">
         Esta área contiene los Torneos High Stakes (con premio real en R$ o AR$). Para inscribirte o ver la información detallada, necesitás una Membresía PRO.
@@ -109,9 +152,12 @@
     
     <div id="premium-unlocked">
       <div class="s-head">
-        <div class="s-title" style="color:var(--accent);">TORNEOS PREMIUM / HIGH STAKES</div>
+        <div>
+          <div class="s-title" style="color:var(--gold);"><span class="dash" style="background:linear-gradient(90deg,var(--gold),#FFA500);box-shadow:0 0 14px rgba(255,214,10,.4);"></span>Premium · High Stakes</div>
+          <div class="s-sub">Torneos con prize pool real. Solo pilotos VIP.</div>
+        </div>
         <div id="premium-admin-actions" style="display:none;">
-          <button class="btn btn-primary" onclick="openAddTorneo()">+ CREAR TORNEO PREMIUM</button>
+          <button class="btn btn-primary" onclick="openAddTorneo()">+ Crear torneo premium</button>
         </div>
       </div>
       <div id="premium-grid" class="torneos-grid"></div>
@@ -119,10 +165,28 @@
   </div>
 </section>
 
+<!-- ══════════════════════ ANALÍTICAS (solo admin) ══ -->
+<section id="analiticas">
+  <div class="container">
+    <div class="s-head">
+      <div>
+        <div class="s-title"><span class="dash"></span>Analíticas</div>
+        <div class="s-sub">Panel de métricas operativas del campeonato.</div>
+      </div>
+    </div>
+    <div id="analiticas-content"></div>
+  </div>
+</section>
+
 <!-- ══════════════════════ STATS ══ -->
 <section id="stats">
   <div class="container">
-    <div class="s-title" style="margin-bottom:1.5rem;">ESTADÍSTICAS GLOBALES</div>
+    <div class="s-head">
+      <div>
+        <div class="s-title"><span class="dash"></span>Estadísticas globales</div>
+        <div class="s-sub">El pulso del campeonato en números.</div>
+      </div>
+    </div>
     <div id="stats-content"></div>
   </div>
 </section>
@@ -179,10 +243,10 @@
       <textarea id="t-notas" rows="2" placeholder="Ej: Solo Clase 3, semifinal pendiente para el sábado…"></textarea>
     </div>
     <!-- Premio / Premium -->
-    <div class="form-row" style="display:flex;align-items:center;gap:.8rem;background:rgba(245,197,24,.04);border:1px solid rgba(245,197,24,.15);border-radius:var(--radius-sm);padding:.75rem 1rem;">
-      <input type="checkbox" id="t-premium" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;">
+    <div class="form-row" style="display:flex;align-items:center;gap:.8rem;background:rgba(255,214,10,.04);border:1px solid rgba(255,214,10,.18);border-radius:var(--radius-sm);padding:.75rem 1rem;">
+      <input type="checkbox" id="t-premium" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer;">
       <label for="t-premium" style="margin:0;font-size:.88rem;cursor:pointer;">
-        <span style="color:var(--accent);font-weight:600;">&#9733; Torneo PREMIUM</span>
+        <span style="color:var(--gold);font-weight:600;">&#9733; Torneo PREMIUM</span>
         <span style="color:var(--text2);font-size:.74rem;display:block;margin-top:.1rem;">Prize Pool real — requiere cobro de inscripción</span>
       </label>
     </div>
@@ -270,7 +334,7 @@
         <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);margin-bottom:.4rem;" id="r-clase1"></div>
         <div class="form-row">
           <label>Tiempo (segundos)</label>
-          <input type="number" id="r-time1" placeholder="Ej: 11.45" step="0.001" min="0">
+          <input type="number" id="r-time1" placeholder="Ej: 11.45" step="0.001" min="0.001" max="3600">
         </div>
         <div id="r-warn1" class="helper warn" style="display:none;"></div>
       </div>
@@ -279,7 +343,7 @@
         <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);margin-bottom:.4rem;" id="r-clase2"></div>
         <div class="form-row">
           <label>Tiempo (segundos)</label>
-          <input type="number" id="r-time2" placeholder="Ej: 11.60" step="0.001" min="0">
+          <input type="number" id="r-time2" placeholder="Ej: 11.60" step="0.001" min="0.001" max="3600">
         </div>
         <div id="r-warn2" class="helper warn" style="display:none;"></div>
       </div>
@@ -301,6 +365,41 @@
   </div>
 </div>
 
+<!-- Modal: Editar Inscripción en Torneo (post-bracket) -->
+<div class="overlay" id="modal-edit-inscripcion">
+  <div class="modal" style="width:520px;">
+    <div class="modal-title">Editar inscripción</div>
+    <div style="font-size:.85rem;color:var(--text2);margin-bottom:1.2rem;">Piloto: <strong id="ei-piloto-nombre" style="color:var(--text);">—</strong></div>
+    <input type="hidden" id="ei-tid">
+    <input type="hidden" id="ei-old-pid">
+    <div class="grid-2">
+      <div class="form-row">
+        <label>Vehículo</label>
+        <input type="text" id="ei-vehiculo" placeholder="Ej: Toyota Supra">
+      </div>
+      <div class="form-row">
+        <label>Clase</label>
+        <select id="ei-clase"></select>
+      </div>
+    </div>
+    <div id="ei-replace-section" style="display:none;">
+      <div class="divider" style="margin:1rem 0;"></div>
+      <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-bottom:.8rem;">REEMPLAZAR POR OTRO PILOTO</div>
+      <div class="form-row">
+        <label>Nuevo piloto (opcional)</label>
+        <select id="ei-new-pid">
+          <option value="">— No reemplazar —</option>
+        </select>
+      </div>
+      <div class="helper" style="margin-top:-.3rem;">Las carreras ya completadas conservan el piloto original en el historial.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-inscripcion')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEditInscripcion()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <!-- Delete Confirm -->
 <div class="overlay" id="modal-delete">
   <div class="modal" style="width:400px;">
@@ -313,32 +412,51 @@
   </div>
 </div>
 
+<!-- Grant Admin Modal -->
+<div class="overlay" id="modal-grant-admin">
+  <div class="modal" style="width:480px;">
+    <div class="modal-title">OTORGAR ACCESO DE ADMIN</div>
+    <div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem;line-height:1.6;">
+      Ingresá el UID del usuario que querés hacer admin. El usuario puede encontrar su UID en la consola del navegador después de iniciar sesión.
+    </div>
+    <div class="form-row">
+      <label>UID del usuario</label>
+      <input type="text" id="ga-uid" placeholder="Ej: A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6" style="font-family:var(--mono);font-size:.85rem;">
+      <div class="helper" style="margin-top:.4rem;">Para obtener tu UID, abrí la consola (F12) y escribí: <code style="background:rgba(0,0,0,.3);padding:.2rem .4rem;border-radius:3px;">firebase.auth().currentUser.uid</code></div>
+    </div>
+    <div class="modal-actions" style="margin-top:1.5rem;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-grant-admin')">CANCELAR</button>
+      <button class="btn btn-primary" onclick="confirmGrantAdmin()">OTORGAR ADMIN</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- end app-wrapper -->
 
 <!-- ══ MODAL PREMIUM (Suscripciones) ══════════════════════════════════════ -->
 <div class="overlay" id="modal-premium">
   <div class="modal" style="width:620px; position:relative;">
     <!-- Overlay Próximamente -->
-    <div style="position:absolute;inset:0;background:rgba(17,17,42,0.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:10;display:flex;align-items:center;justify-content:center;flex-direction:column;border-radius:inherit;">
-      <div style="font-family:var(--display);font-size:2.2rem;font-weight:700;color:var(--red);letter-spacing:.1em;text-shadow:0 0 20px rgba(244,63,94,0.4);">PRÓXIMAMENTE</div>
-      <div style="font-family:var(--body);font-size:.95rem;color:var(--text);margin-top:.5rem;">Esta función aún no está disponible.</div>
+    <div style="position:absolute;inset:0;background:rgba(8,8,16,0.82);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);z-index:10;display:flex;align-items:center;justify-content:center;flex-direction:column;border-radius:inherit;">
+      <div style="font-family:var(--display);font-size:2rem;font-weight:800;letter-spacing:-.05em;color:var(--text);">PRÓXIMAMENTE</div>
+      <div style="font-family:var(--body);font-size:.95rem;color:var(--text2);margin-top:.5rem;">Esta función aún no está disponible.</div>
       <button class="btn btn-ghost" style="margin-top:2rem;" onclick="closeModal('modal-premium')">VOLVER</button>
     </div>
 
-    <div class="modal-title" style="font-size:1.5rem;color:var(--accent);">&#9733; MEMBRESÍA VIP DE PICADAS AR</div>
+    <div class="modal-title" style="font-size:1.4rem;color:var(--gold);">&#9733; MEMBRESÍA VIP DE PICADAS AR</div>
     <p style="color:var(--text2);font-size:.95rem;margin-bottom:1.5rem;line-height:1.6;">Llevá tu carrera al siguiente nivel. Uniéndote como Piloto VIP no solo apoyás al servidor, sino que desbloqueás herramientas exclusivas para dominar la pista.</p>
 
     <!-- Beneficios -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.8rem;">
-      <div style="background:rgba(245,197,24,.05);border:1px solid rgba(245,197,24,.3);border-radius:var(--radius);padding:1.4rem;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;right:0;background:var(--accent);color:#000;font-family:var(--display);font-weight:700;font-size:.65rem;padding:.2rem .8rem;border-bottom-left-radius:8px;">★ MÁS POPULAR</div>
-        <div style="font-family:var(--display);font-size:1.3rem;font-weight:700;color:var(--accent);margin-bottom:.2rem;">PILOTO VIP</div>
-        <div style="font-family:var(--display);font-size:1.8rem;font-weight:700;color:var(--text);margin-bottom:1rem;">$4.500<span style="font-size:.9rem;color:var(--text2);font-weight:400;"> ARS / mes</span></div>
-        <ul style="font-family:var(--mono);font-size:.78rem;color:var(--text2);line-height:2.2;list-style:none;">
-          <li><span style="color:var(--accent);">✓</span> Insignia dorada en tu nombre</li>
-          <li><span style="color:var(--accent);">✓</span> Generador de Tarjeta de Stats</li>
-          <li><span style="color:var(--accent);">✓</span> Estacionamiento reservado (Discord)</li>
-          <li><span style="color:var(--accent);">✓</span> Acceso a la sección HIGH STAKES</li>
+      <div style="background:rgba(180,83,9,.04);border:1px solid rgba(180,83,9,.2);border-radius:var(--radius);padding:1.4rem;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;right:0;background:var(--gold);color:#fff;font-family:var(--display);font-weight:700;font-size:.65rem;padding:.2rem .8rem;border-bottom-left-radius:8px;">★ MÁS POPULAR</div>
+        <div style="font-family:var(--display);font-size:1.2rem;font-weight:700;color:var(--text);margin-bottom:.2rem;letter-spacing:-.03em;">PILOTO VIP</div>
+        <div style="font-family:var(--display);font-size:1.7rem;font-weight:800;color:var(--text);margin-bottom:1rem;letter-spacing:-.04em;">$4.500<span style="font-size:.9rem;color:var(--text2);font-weight:400;"> ARS / mes</span></div>
+        <ul style="font-family:var(--body);font-size:.8rem;color:var(--text2);line-height:2.2;list-style:none;">
+          <li><span style="color:var(--green);font-weight:700;">✓</span> Insignia dorada en tu nombre</li>
+          <li><span style="color:var(--green);font-weight:700;">✓</span> Generador de Tarjeta de Stats</li>
+          <li><span style="color:var(--green);font-weight:700;">✓</span> Estacionamiento reservado (Discord)</li>
+          <li><span style="color:var(--green);font-weight:700;">✓</span> Acceso a la sección HIGH STAKES</li>
         </ul>
       </div>
 
@@ -354,19 +472,19 @@
             <input type="text" id="vip-username-input" placeholder="Ej: VelocidadMax99" style="font-family:var(--mono);">
           </div>
           <button class="btn-premium" id="vip-pay-btn" onclick="startVIPSubscription()" style="width:100%;justify-content:center;padding:.75rem 1rem;font-size:.82rem;">
-            💳 PAGAR CON MERCADO PAGO
+            PAGAR CON MERCADO PAGO
           </button>
           <div id="vip-form-error" style="font-family:var(--mono);font-size:.7rem;color:var(--red);margin-top:.5rem;display:none;"></div>
         </div>
 
         <!-- Estado: cargando -->
         <div id="vip-loading-panel" style="display:none;text-align:center;padding:1rem 0;">
-          <div style="font-family:var(--mono);font-size:.75rem;color:var(--accent);letter-spacing:.1em;">GENERANDO LINK DE PAGO...</div>
+          <div style="font-family:var(--mono);font-size:.75rem;color:var(--text2);letter-spacing:.1em;">GENERANDO LINK DE PAGO...</div>
         </div>
 
         <!-- Nota Robux -->
-        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);padding:.8rem;font-family:var(--mono);font-size:.72rem;color:var(--text2);display:flex;align-items:center;gap:.7rem;">
-          <div style="font-size:1.2rem;">🏎️</div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-sm);padding:.8rem;font-family:var(--body);font-size:.78rem;color:var(--text2);display:flex;align-items:center;gap:.7rem;">
+          <div style="font-size:1.1rem;opacity:.5;">&#127946;</div>
           <div><strong style="color:var(--text);">¿Pagás con Robux?</strong><br>Abrí ticket en Discord para pago via Gamepass.</div>
         </div>
       </div>
@@ -379,39 +497,39 @@
 </div>
 
 <!-- ══ OFF-SCREEN SHARE CARD ══════════════════════════════════════════════ -->
-<div id="share-card" style="display:none;position:fixed;left:-9999px;top:-9999px;width:480px;background:linear-gradient(135deg,#0a0a0f 0%,#141420 60%,#1a1a2e 100%);border:1px solid rgba(245,197,24,.25);border-radius:16px;padding:2rem;font-family:'Space Grotesk',sans-serif;flex-direction:column;gap:1rem;">
+<div id="share-card" style="display:none;position:fixed;left:-9999px;top:-9999px;width:480px;background:linear-gradient(135deg,#0E0E18 0%,#12121E 60%,#0A0A14 100%);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:2rem;font-family:'Inter',sans-serif;flex-direction:column;gap:1rem;">
   <div style="display:flex;align-items:center;justify-content:space-between;">
-    <div style="font-size:1.2rem;font-weight:700;color:#F5C518;letter-spacing:.04em;">&#9651; PICADAS AR</div>
-    <div style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#6e6e80;letter-spacing:.18em;">picadas-ar.com</div>
+    <div style="font-size:1.1rem;font-weight:800;color:#F2F2F7;letter-spacing:-.03em;">&#9651; PICADAS AR</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#8E8EA0;letter-spacing:.18em;">picadas-ar.com</div>
   </div>
-  <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:1rem;">
+  <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:1rem;">
     <div style="display:flex;align-items:center;gap:.6rem;">
-      <div id="sc-name" style="font-size:2rem;font-weight:700;color:#f2f2f7;"></div>
-      <div id="sc-vip" style="display:none;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.4);border-radius:5px;padding:.15rem .5rem;font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#F5C518;">VIP</div>
+      <div id="sc-name" style="font-size:2rem;font-weight:800;color:#F2F2F7;letter-spacing:-.04em;"></div>
+      <div id="sc-vip" style="display:none;background:rgba(255,214,10,.12);border:1px solid rgba(255,214,10,.35);border-radius:5px;padding:.15rem .5rem;font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#FFD60A;">VIP</div>
     </div>
-    <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#6e6e80;letter-spacing:.12em;margin-top:.1rem;">PILOTO REGISTRADO</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#8E8EA0;letter-spacing:.12em;margin-top:.1rem;">PILOTO REGISTRADO</div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;">
-    <div style="background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.2);border-radius:8px;padding:.75rem;text-align:center;">
-      <div id="sc-victorias" style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:#30D158;font-weight:700;"></div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#6e6e80;letter-spacing:.1em;margin-top:.2rem;">VICTORIAS</div>
+    <div style="background:rgba(50,215,75,.08);border:1px solid rgba(50,215,75,.22);border-radius:8px;padding:.75rem;text-align:center;">
+      <div id="sc-victorias" style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:#32D74B;font-weight:700;"></div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#8E8EA0;letter-spacing:.1em;margin-top:.2rem;">VICTORIAS</div>
     </div>
-    <div style="background:rgba(255,69,58,.08);border:1px solid rgba(255,69,58,.2);border-radius:8px;padding:.75rem;text-align:center;">
+    <div style="background:rgba(255,69,58,.08);border:1px solid rgba(255,69,58,.22);border-radius:8px;padding:.75rem;text-align:center;">
       <div id="sc-derrotas" style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:#FF453A;font-weight:700;"></div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#6e6e80;letter-spacing:.1em;margin-top:.2rem;">DERROTAS</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#8E8EA0;letter-spacing:.1em;margin-top:.2rem;">DERROTAS</div>
     </div>
-    <div style="background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.2);border-radius:8px;padding:.75rem;text-align:center;">
-      <div id="sc-pct" style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:#F5C518;font-weight:700;"></div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#6e6e80;letter-spacing:.1em;margin-top:.2rem;">WIN RATE</div>
+    <div style="background:rgba(255,214,10,.08);border:1px solid rgba(255,214,10,.22);border-radius:8px;padding:.75rem;text-align:center;">
+      <div id="sc-pct" style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:#FFD60A;font-weight:700;"></div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#8E8EA0;letter-spacing:.1em;margin-top:.2rem;">WIN RATE</div>
     </div>
-    <div style="background:rgba(10,132,255,.08);border:1px solid rgba(10,132,255,.2);border-radius:8px;padding:.75rem;text-align:center;">
+    <div style="background:rgba(10,132,255,.08);border:1px solid rgba(10,132,255,.22);border-radius:8px;padding:.75rem;text-align:center;">
       <div id="sc-eventos" style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:#0A84FF;font-weight:700;"></div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#6e6e80;letter-spacing:.1em;margin-top:.2rem;">EVENTOS</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#8E8EA0;letter-spacing:.1em;margin-top:.2rem;">EVENTOS</div>
     </div>
   </div>
-  <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.75rem;">
-    <div style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#6e6e80;letter-spacing:.12em;margin-bottom:.3rem;">MEJORES TIEMPOS</div>
-    <div id="sc-best" style="font-family:'Share Tech Mono',monospace;font-size:.78rem;color:#F5C518;"></div>
+  <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.75rem;">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#8E8EA0;letter-spacing:.12em;margin-bottom:.3rem;">MEJORES TIEMPOS</div>
+    <div id="sc-best" style="font-family:'Share Tech Mono',monospace;font-size:.78rem;color:#FFD60A;"></div>
   </div>
 </div>
 
@@ -453,7 +571,8 @@
     <input type="hidden" id="ir-tid">
     <div class="form-row">
       <label>Username de Roblox</label>
-      <input type="text" id="ir-username" placeholder="Tu username exacto en Roblox">
+      <input type="text" id="ir-username" list="pilotos-datalist" placeholder="Tu username exacto en Roblox">
+      <datalist id="pilotos-datalist"></datalist>
     </div>
     <div class="grid-2">
       <div class="form-row">
@@ -482,5 +601,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="app.js"></script>
+<script src="glass-fx.js"></script>
 </body>
 </html>

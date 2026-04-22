@@ -62,6 +62,36 @@ window.grantVip = function(pid, ev) {
   }
 };
 
+// ═══ GRANT ADMIN ══════════════════════════════════════════════════
+window.confirmGrantAdmin = function() {
+  const uid = document.getElementById('ga-uid').value.trim();
+  if (!uid) {
+    toast('El UID no puede estar vacío.', 'err');
+    return;
+  }
+  if (uid.length < 20) {
+    toast('El UID parece inválido (muy corto).', 'err');
+    return;
+  }
+  if (confirm(`¿Otorgar privilegios de ADMIN al usuario ${uid}?`)) {
+    saveGrantAdmin(uid);
+  }
+};
+
+async function saveGrantAdmin(uid) {
+  try {
+    await db.ref('admins/' + uid).set(true);
+    playChime();
+    toast('✓ Admin otorgado correctamente', 'ok');
+    document.getElementById('ga-uid').value = '';
+    closeModal('modal-grant-admin');
+    logChange('ADMIN', `Privilegios de admin otorgados al UID ${uid}`);
+  } catch (err) {
+    console.error('Error al otorgar admin:', err);
+    toast('Error al otorgar admin. Verificá tu conexión.', 'err');
+  }
+}
+
 // ═══ INIT ════════════════════════════════════════════════════════
 document.getElementById('searchPiloto').value='';
 // Poblar select de clases en modal de inscripción
@@ -70,9 +100,13 @@ if(irClase)irClase.innerHTML=CLASE_OPTS;
 function renderAuthScreen(){
   const isL=_authMode==='login';
   document.getElementById('auth-screen').innerHTML=`
+    <div class="auth-banner" aria-hidden="true"></div>
     <div class="auth-box">
-      <div class="logo-main">▲ PICADAS AR</div>
-      <div class="logo-sub">GESTOR DE TORNEOS — ROBLOX</div>
+      <div class="auth-logo">
+        <img src="logotipos/LogoWhite512.png" alt="Dusty" style="filter:invert(1) drop-shadow(0 4px 22px rgba(255,87,34,0.55));">
+        <div class="logo-main"><span style="background:linear-gradient(135deg,#FF5722,#FF8A4C);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">DUSTY</span> · PICADAS AR</div>
+        <div class="logo-sub">COMUNIDAD · PISTA · RANKING</div>
+      </div>
       <div class="modal-title">${isL?'Iniciar sesión':'Crear cuenta'}</div>
       <div class="form-row"><label>Email</label><input type="email" id="auth-email" placeholder="admin@picadas.com"></div>
       <div class="form-row"><label>Contraseña</label><input type="password" id="auth-pass" placeholder="${isL?'Tu contraseña':'Mínimo 6 caracteres'}"></div>
@@ -154,12 +188,55 @@ function logout(){
   auth.signOut();
 }
 
+// ─── Actualiza el bloque de usuario (avatar + rol) ──────────────
+function updateUserBlock(label, role) {
+  // role: 'admin' | 'spectator' | 'guest'
+  const emailEl  = document.getElementById('user-email');
+  const avatarEl = document.getElementById('user-avatar');
+  const roleEl   = document.getElementById('user-role');
+  const roleTxt  = document.getElementById('user-role-text');
+  const adminBtn = document.getElementById('btn-admin-settings');
+  if (emailEl)  emailEl.textContent = label || '—';
+  if (avatarEl) {
+    const initial = (label && label.length) ? label.charAt(0).toUpperCase() : 'D';
+    avatarEl.textContent = initial;
+  }
+  if (roleEl) {
+    roleEl.classList.remove('admin','spectator');
+    if (role === 'admin')     { roleEl.classList.add('admin'); }
+    else                       { roleEl.classList.add('spectator'); }
+  }
+  if (roleTxt) {
+    roleTxt.textContent = role === 'admin' ? 'ADMINISTRADOR' : (role === 'guest' ? 'ESPECTADOR' : 'CONECTADO');
+  }
+  if (adminBtn) {
+    adminBtn.style.display = role === 'admin' ? '' : 'none';
+  }
+}
+
+// ─── Refresh de stats del hero (sin afectar nada existente) ─────
+function refreshHeroStats() {
+  const s = load();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const pilotos = (s.jugadores || []).length;
+  const vips    = (s.jugadores || []).filter(p => p.isVIP).length;
+  const torneos = (s.torneos   || []).filter(t => t.estado !== 'finalizado').length;
+  let eventos = 0;
+  (s.torneos || []).forEach(t => {
+    (t.rondas || []).forEach(r => (r || []).forEach(m => { if (m && m.estado === 'completado') eventos++; }));
+  });
+  set('hs-pilotos', pilotos);
+  set('hs-torneos', torneos);
+  set('hs-vips', vips);
+  set('hs-eventos', eventos);
+}
+
 function enterGuestMode(){
   _isGuest=true;_isAdmin=false;
   document.body.classList.add('guest-mode');
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app-wrapper').style.display='block';
-  document.getElementById('user-email').textContent='Espectador';
+  updateUserBlock('Espectador', 'guest');
   document.getElementById('btn-logout').textContent='Iniciar sesión';
   document.getElementById('guest-banner').style.display='block';
   showLoading();startRealtimeSync();
@@ -172,7 +249,7 @@ auth.onAuthStateChanged(async user=>{
     await checkAdminRole(user);
     document.getElementById('auth-screen').style.display='none';
     document.getElementById('app-wrapper').style.display='block';
-    document.getElementById('user-email').textContent=user.displayName||user.email;
+    updateUserBlock(user.displayName||user.email, _isAdmin ? 'admin' : 'spectator');
     document.getElementById('btn-logout').textContent='Cerrar sesión';
     document.getElementById('guest-banner').style.display='none';
     document.body.classList.remove('guest-mode');_isGuest=false;
@@ -200,12 +277,14 @@ function startRealtimeSync(){
 }
 function stopRealtimeSync(){if(_dbListener){dbRef.off('value',_dbListener);_dbListener=null;}}
 function refreshActiveTab(){
+  refreshHeroStats();
   const a=document.querySelector('section.active');if(!a)return;
   const id=a.id;
   if(id==='jugadores')renderJugadores();
   if(id==='torneos')renderTorneos();
   if(id==='llaves')renderLlaves();
   if(id==='stats')renderStats();
+  if(id==='analiticas')renderAnaliticas();
 }
 
 // ═══ NAV ═════════════════════════════════════════════════════════
@@ -240,6 +319,7 @@ function goTab(tab){
   if(tab==='torneos')renderTorneos();
   if(tab==='llaves')renderLlaves();
   if(tab==='stats')renderStats();
+  if(tab==='analiticas')renderAnaliticas();
 }
 
 // ═══ TOAST ═══════════════════════════════════════════════════════
@@ -469,7 +549,15 @@ function confirmDelete(type,id,name){
     `¿Eliminar la llave "${name}"? No se puede deshacer.`;
   document.getElementById('delete-confirm-btn').onclick=()=>{
     const s=load();
-    if(type==='piloto')s.jugadores=s.jugadores.filter(j=>j.id!==id);
+    if(type==='piloto'){
+      // Advertir si tiene matches pendientes en algún bracket activo
+      const activeBrackets=[
+        ...s.torneos.filter(t=>t.estado!=='finalizado'&&t.bracket?.rondas?.some(r=>r.some(m=>m.estado==='pendiente'&&(m.j1===id||m.j2===id)))),
+        ...s.llaves.filter(lv=>lv.estado!=='finalizado'&&[...(lv.bracketRondas||[]).flat(),...(lv.repechajeMatches||[])].some(m=>m.estado==='pendiente'&&(m.j1===id||m.j2===id)))
+      ];
+      if(activeBrackets.length&&!confirm(`⚠ Este piloto tiene carreras pendientes en: ${activeBrackets.map(x=>x.nombre).join(', ')}.\n\nSi lo eliminás, esos matches quedarán sin piloto. ¿Continuar igual?`))return;
+      s.jugadores=s.jugadores.filter(j=>j.id!==id);
+    }
     if(type==='torneo')s.torneos=s.torneos.filter(t=>t.id!==id);
     if(type==='llave')s.llaves=s.llaves.filter(l=>l.id!==id);
     logChange('ELIMINACIÓN',`${type.toUpperCase()} eliminado: "${name}"`);
@@ -627,6 +715,7 @@ function saveTorneo(){
   const claseTorneo=document.getElementById('t-clase')?.value||'';
   const limiteVal=document.getElementById('t-limite')?.value||'';
   if(!nombre){toast('Poné un nombre.','err');return;}
+  if(nombre.length>100){toast('El nombre es demasiado largo (máx. 100 caracteres).','err');return;}
   const state=load();
   state.torneos.push({
     id:uid(),nombre,fecha,notas,isPremium,claseTorneo,
@@ -778,7 +867,9 @@ function renderTorneoDetail(){
         ${jugadores.map(j=>{
           const pid=typeof j==='object'?j.pilotoId:j;
           const ins=typeof j==='object'?j:null;
-          return`<div class="meta-pill">${getJugadorNombre(pid)}${ins?.clase?` · <span style="color:var(--accent)">${TOPES[ins.clase]?.label||ins.clase}</span>`:''}${ins?.vehiculo?` <span style="color:var(--text3);font-size:.65rem;">${ins.vehiculo}</span>`:''}
+          return`<div style="display:flex;align-items:center;gap:.3rem;">
+            <div class="meta-pill">${getJugadorNombre(pid)}${ins?.clase?` · <span style="color:var(--accent)">${TOPES[ins.clase]?.label||ins.clase}</span>`:''}${ins?.vehiculo?` <span style="color:var(--text3);font-size:.65rem;">${ins.vehiculo}</span>`:''}</div>
+            ${_isAdmin?`<button class="btn btn-ghost btn-sm" style="padding:.15rem .5rem;font-size:.65rem;" onclick="openEditInscripcion('${t.id}','${pid}')">✏</button>`:''}
           </div>`;
         }).join('')}
       </div>
@@ -1330,10 +1421,397 @@ async function startVIPSubscription() {
 }
 
 
+// ═══ ANALÍTICAS TAB ══════════════════════════════════════════════
+let _charts={};
+function destroyCharts(){
+  Object.values(_charts).forEach(c=>{try{c.destroy();}catch(e){}});
+  _charts={};
+}
+
+const CHART_COLORS=['#FF5722','#0A84FF','#32D74B','#FFD60A','#BF5AF2','#FF453A','#FF9F0A','#30D158','#64D2FF','#5E5CE6','#8E8EA0'];
+function chartDefaults(){
+  if(typeof Chart==='undefined')return;
+  Chart.defaults.color='#8E8EA0';
+  Chart.defaults.borderColor='rgba(255,255,255,0.06)';
+  Chart.defaults.font={family:"'Share Tech Mono',monospace",size:10};
+}
+const TICK_STYLE={color:'#8E8EA0',font:{family:"'Share Tech Mono',monospace",size:10}};
+const TICK_LIGHT={color:'#F2F2F7',font:{family:"'Share Tech Mono',monospace",size:10}};
+const GRID={color:'rgba(255,255,255,0.05)'};
+
+function renderAnaliticas(){
+  const el=document.getElementById('analiticas-content');
+  if(!el)return;
+  if(!_isAdmin){el.innerHTML='<div class="helper" style="padding:2rem;color:var(--text3);">Acceso restringido a administradores.</div>';return;}
+  const state=load();
+  destroyCharts();
+  chartDefaults();
+  const{jugadores,torneos,changelog}=state;
+  const{cls,pilotCls,byes}=computeAnalytics(state);
+  const pilots=jugadores.map(j=>({...j,...computePilotStats(j.id,state)})).filter(p=>p.victorias+p.derrotas>0);
+  const clasesConData=Object.entries(cls).filter(([,v])=>v.m>0);
+  const clasesConTiempos=clasesConData.filter(([,v])=>v.times.length>0);
+
+  const totalCarreras=Object.values(cls).reduce((a,c)=>a+c.m,0);
+  const totalDQ=Object.values(cls).reduce((a,c)=>a+c.dq,0);
+  const avgPilotos=torneos.length?(torneos.reduce((a,t)=>a+(t.jugadores||[]).length,0)/torneos.length).toFixed(1):'—';
+  const pilotsWithGames=pilots.length;
+
+  let html=`
+  <div class="stat-row" style="margin-bottom:1.5rem;">
+    <div class="stat-card"><div class="stat-val">${totalCarreras}</div><div class="stat-lbl">CARRERAS TOTALES</div></div>
+    <div class="stat-card" style="background:rgba(255,69,58,.06);border-color:rgba(255,69,58,.2);"><div class="stat-val" style="color:var(--red);">${totalDQ}</div><div class="stat-lbl">DQ TOTALES</div></div>
+    <div class="stat-card" style="background:rgba(10,132,255,.06);border-color:rgba(10,132,255,.2);"><div class="stat-val" style="color:var(--blue);">${avgPilotos}</div><div class="stat-lbl">PILOTOS / TORNEO</div></div>
+    <div class="stat-card" style="background:rgba(48,209,88,.06);border-color:rgba(48,209,88,.2);"><div class="stat-val" style="color:var(--green);">${pilotsWithGames}</div><div class="stat-lbl">PILOTOS ACTIVOS</div></div>
+  </div>
+  <div class="grid-2" style="gap:1.5rem;margin-bottom:1.5rem;">
+    <div data-glass style="padding:1.4rem;border-radius:var(--radius);">
+      <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-bottom:1rem;">VICTORIAS Y DERROTAS POR PILOTO</div>
+      <canvas id="chart-vd"></canvas>
+    </div>
+    <div data-glass style="padding:1.4rem;border-radius:var(--radius);">
+      <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-bottom:1rem;">CARRERAS POR CLASE</div>
+      <canvas id="chart-clase-dist"></canvas>
+    </div>
+  </div>
+  <div class="grid-2" style="gap:1.5rem;margin-bottom:1.5rem;">
+    <div data-glass style="padding:1.4rem;border-radius:var(--radius);">
+      <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-bottom:1rem;">TASA DE DQ POR CLASE</div>
+      <canvas id="chart-dq"></canvas>
+    </div>
+    <div data-glass style="padding:1.4rem;border-radius:var(--radius);">
+      <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-bottom:1rem;">WIN RATE POR PILOTO</div>
+      <canvas id="chart-winrate"></canvas>
+    </div>
+  </div>`;
+
+  if(clasesConTiempos.length){
+    html+=`<div data-glass style="padding:1.4rem;border-radius:var(--radius);margin-bottom:1.5rem;">
+      <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-bottom:1rem;">TIEMPO PROMEDIO VS TOPE POR CLASE</div>
+      <canvas id="chart-tiempos"></canvas>
+    </div>`;
+  }
+
+  // Tabla win rate por clase
+  const pilotsWithClsData=jugadores.filter(j=>Object.keys(pilotCls[j.id]||{}).length>0);
+  if(pilotsWithClsData.length){
+    const clasesUsadas=[...new Set(pilotsWithClsData.flatMap(j=>Object.keys(pilotCls[j.id]||{})))];
+    html+=`<div class="divider"></div>
+    <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-bottom:.8rem;">WIN RATE DETALLADO POR CLASE</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>PILOTO</th>${clasesUsadas.map(c=>`<th style="text-align:center;">${c}</th>`).join('')}</tr></thead>
+      <tbody>${pilotsWithClsData.map(j=>{
+        const cs=pilotCls[j.id]||{};
+        const cells=clasesUsadas.map(clase=>{
+          if(!cs[clase])return`<td style="color:var(--text3);text-align:center;">—</td>`;
+          const tot=cs[clase].v+cs[clase].d;
+          const pct=tot?cs[clase].v/tot*100:0;
+          const color=pct>=60?'var(--green)':pct>=40?'var(--accent)':'var(--red)';
+          const bg=pct>=60?'rgba(48,209,88,.1)':pct>=40?'rgba(255,214,10,.06)':'rgba(255,69,58,.08)';
+          return`<td style="font-family:var(--mono);background:${bg};text-align:center;padding:.4rem .6rem;">
+            <div style="color:${color};font-weight:700;">${pct.toFixed(0)}%</div>
+            <div style="font-size:.62rem;color:var(--text3);">${cs[clase].v}V ${cs[clase].d}D</div>
+          </td>`;
+        });
+        return`<tr><td><strong>${j.username}</strong>${j.isVIP?'<span class="badge-vip" style="margin-left:.3rem;">VIP</span>':''}</td>${cells.join('')}</tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  }
+
+  // Byes
+  if(byes.length){
+    html+=`<div class="divider"></div>
+    <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-bottom:.8rem;">AVANCES POR BYE</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>EVENTO</th><th>BYES</th><th>TOTAL MATCHES</th><th>% BYE</th></tr></thead>
+      <tbody>${byes.map(b=>`<tr>
+        <td>${b.nombre}</td>
+        <td style="font-family:var(--mono);color:var(--accent);">${b.byes}</td>
+        <td style="font-family:var(--mono);">${b.total}</td>
+        <td style="font-family:var(--mono);color:var(--text2);">${(b.byes/b.total*100).toFixed(0)}%</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+
+  // Changelog
+  if(changelog&&changelog.length){
+    html+=`<div class="divider"></div>
+    <div class="s-title" style="font-size:1.1rem;margin-bottom:1rem;">📋 LOG DE CAMBIOS</div>
+    <div class="table-wrap" style="max-height:350px;overflow-y:auto;"><table>
+      <thead><tr><th>FECHA</th><th>TIPO</th><th>DESCRIPCIÓN</th></tr></thead>
+      <tbody>${changelog.slice(0,100).map(c=>`<tr>
+        <td style="font-family:var(--mono);font-size:.75rem;color:var(--text2);white-space:nowrap;">${c.fecha}</td>
+        <td><span class="badge badge-clase">${c.tipo}</span></td>
+        <td style="font-size:.85rem;">${c.desc}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+
+  el.innerHTML=html;
+
+  // ── Gráfico 1: Victorias y Derrotas por piloto (horizontal bar) ─
+  if(pilots.length&&document.getElementById('chart-vd')){
+    _charts.vd=new Chart(document.getElementById('chart-vd'),{
+      type:'bar',
+      data:{
+        labels:pilots.map(p=>p.username),
+        datasets:[
+          {label:'Victorias',data:pilots.map(p=>p.victorias),backgroundColor:'rgba(48,209,88,0.75)',borderColor:'rgba(48,209,88,1)',borderWidth:1,borderRadius:4},
+          {label:'Derrotas',data:pilots.map(p=>p.derrotas),backgroundColor:'rgba(255,69,58,0.75)',borderColor:'rgba(255,69,58,1)',borderWidth:1,borderRadius:4}
+        ]
+      },
+      options:{
+        indexAxis:'y',responsive:true,
+        plugins:{legend:{position:'bottom',labels:{color:'#8E8EA0',font:{family:"'Share Tech Mono',monospace",size:10}}}},
+        scales:{
+          x:{grid:GRID,ticks:TICK_STYLE},
+          y:{grid:GRID,ticks:TICK_LIGHT}
+        }
+      }
+    });
+  }
+
+  // ── Gráfico 2: Carreras por clase (doughnut) ─────────────────
+  if(clasesConData.length&&document.getElementById('chart-clase-dist')){
+    _charts.claseDist=new Chart(document.getElementById('chart-clase-dist'),{
+      type:'doughnut',
+      data:{
+        labels:clasesConData.map(([k])=>TOPES[k]?.label||k),
+        datasets:[{
+          data:clasesConData.map(([,v])=>v.m),
+          backgroundColor:clasesConData.map((_,i)=>CHART_COLORS[i%CHART_COLORS.length]+'CC'),
+          borderColor:clasesConData.map((_,i)=>CHART_COLORS[i%CHART_COLORS.length]),
+          borderWidth:1
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{
+          legend:{position:'bottom',labels:{color:'#8E8EA0',font:{family:"'Share Tech Mono',monospace",size:10}}},
+          tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} carreras`}}
+        }
+      }
+    });
+  }
+
+  // ── Gráfico 3: Tasa de DQ por clase (bar) ────────────────────
+  if(clasesConData.length&&document.getElementById('chart-dq')){
+    const dqPcts=clasesConData.map(([,v])=>v.slots>0?+(v.dq/v.slots*100).toFixed(1):0);
+    _charts.dq=new Chart(document.getElementById('chart-dq'),{
+      type:'bar',
+      data:{
+        labels:clasesConData.map(([k])=>k),
+        datasets:[{
+          label:'Tasa DQ %',
+          data:dqPcts,
+          backgroundColor:dqPcts.map(p=>p>20?'rgba(255,69,58,0.8)':p>10?'rgba(255,214,10,0.8)':'rgba(48,209,88,0.8)'),
+          borderRadius:4
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`DQ: ${ctx.raw}%`}}},
+        scales:{
+          x:{grid:GRID,ticks:TICK_STYLE},
+          y:{grid:GRID,ticks:{...TICK_STYLE,callback:v=>v+'%'},min:0,max:100}
+        }
+      }
+    });
+  }
+
+  // ── Gráfico 4: Win rate por piloto (horizontal bar) ──────────
+  if(pilots.length&&document.getElementById('chart-winrate')){
+    const sorted=[...pilots].sort((a,b)=>{
+      const ra=a.victorias+a.derrotas,rb=b.victorias+b.derrotas;
+      return rb?(b.victorias/rb)-(ra?a.victorias/ra:0):0;
+    });
+    const rates=sorted.map(p=>{const t=p.victorias+p.derrotas;return t?+(p.victorias/t*100).toFixed(1):0;});
+    _charts.winrate=new Chart(document.getElementById('chart-winrate'),{
+      type:'bar',
+      data:{
+        labels:sorted.map(p=>p.username),
+        datasets:[{
+          label:'Win Rate %',
+          data:rates,
+          backgroundColor:rates.map(r=>r>=60?'rgba(48,209,88,0.8)':r>=40?'rgba(255,214,10,0.8)':'rgba(255,69,58,0.8)'),
+          borderRadius:4
+        }]
+      },
+      options:{
+        indexAxis:'y',responsive:true,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw}%`}}},
+        scales:{
+          x:{grid:GRID,ticks:{...TICK_STYLE,callback:v=>v+'%'},min:0,max:100},
+          y:{grid:GRID,ticks:TICK_LIGHT}
+        }
+      }
+    });
+  }
+
+  // ── Gráfico 5: Tiempo promedio vs tope (bar + line mixto) ────
+  if(clasesConTiempos.length&&document.getElementById('chart-tiempos')){
+    const labels=clasesConTiempos.map(([k])=>TOPES[k]?.label||k);
+    const avgs=clasesConTiempos.map(([,v])=>+(v.times.reduce((a,b)=>a+b,0)/v.times.length).toFixed(3));
+    const topes=clasesConTiempos.map(([k])=>TOPES[k]?.tope??null);
+    _charts.tiempos=new Chart(document.getElementById('chart-tiempos'),{
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          {type:'bar',label:'Promedio',data:avgs,backgroundColor:'rgba(10,132,255,0.65)',borderColor:'rgba(10,132,255,1)',borderWidth:1,borderRadius:4},
+          {type:'line',label:'Tope clase',data:topes,borderColor:'rgba(255,69,58,0.9)',backgroundColor:'transparent',pointBackgroundColor:'rgba(255,69,58,1)',pointRadius:5,borderWidth:2,borderDash:[5,4],tension:0}
+        ]
+      },
+      options:{
+        responsive:true,
+        plugins:{
+          legend:{position:'bottom',labels:{color:'#8E8EA0',font:{family:"'Share Tech Mono',monospace",size:10}}},
+          tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}"`}}
+        },
+        scales:{
+          x:{grid:GRID,ticks:TICK_STYLE},
+          y:{grid:GRID,ticks:{...TICK_STYLE,callback:v=>v+'"'}}
+        }
+      }
+    });
+  }
+}
+
+// ═══ ANALYTICS ═══════════════════════════════════════════════════
+function computeAnalytics(state){
+  const{jugadores,torneos,llaves}=state;
+  const cls={};
+  Object.keys(TOPES).forEach(k=>{cls[k]={m:0,slots:0,dq:0,times:[]};});
+  const pilotCls={};
+  jugadores.forEach(j=>{pilotCls[j.id]={};});
+
+  function procMatch(m,c1,c2,pid1,pid2){
+    if(m.estado!=='completado')return;
+    if(cls[c1]){
+      cls[c1].m++;cls[c1].slots++;
+      if(m.dq1)cls[c1].dq++;
+      if(m.tiempo1!=null)cls[c1].times.push(m.tiempo1);
+    }
+    if(c2===c1){
+      if(cls[c1]){cls[c1].slots++;if(m.dq2)cls[c1].dq++;if(m.tiempo2!=null)cls[c1].times.push(m.tiempo2);}
+    } else if(cls[c2]){
+      cls[c2].m++;cls[c2].slots++;
+      if(m.dq2)cls[c2].dq++;
+      if(m.tiempo2!=null)cls[c2].times.push(m.tiempo2);
+    }
+    if(pid1&&pilotCls[pid1]){
+      if(!pilotCls[pid1][c1])pilotCls[pid1][c1]={v:0,d:0};
+      if(m.ganador===pid1)pilotCls[pid1][c1].v++;else pilotCls[pid1][c1].d++;
+    }
+    if(pid2&&pilotCls[pid2]){
+      if(!pilotCls[pid2][c2])pilotCls[pid2][c2]={v:0,d:0};
+      if(m.ganador===pid2)pilotCls[pid2][c2].v++;else pilotCls[pid2][c2].d++;
+    }
+  }
+
+  torneos.forEach(t=>{
+    (t.bracket?.rondas||[]).forEach(r=>r.forEach(m=>{
+      const i1=getInscripcion(t,m.j1),i2=getInscripcion(t,m.j2);
+      procMatch(m,i1?.clase||'L1',i2?.clase||'L1',m.j1,m.j2);
+    }));
+  });
+  llaves.forEach(lv=>{
+    [...(lv.repechajeMatches||[]),...(lv.bracketRondas||[]).flat()].forEach(m=>{
+      const i1=getInscripcion(lv,m.j1),i2=getInscripcion(lv,m.j2);
+      procMatch(m,i1?.clase||'L1',i2?.clase||'L1',m.j1,m.j2);
+    });
+  });
+
+  const byes=[...torneos,...llaves].map(ev=>{
+    const all=[...(ev.bracket?.rondas||[]).flat(),...(ev.bracketRondas||[]).flat(),...(ev.repechajeMatches||[])];
+    const b=all.filter(m=>m.estado==='bye').length;
+    return all.length?{nombre:ev.nombre,byes:b,total:all.length}:null;
+  }).filter(Boolean).filter(b=>b.byes>0);
+
+  return{cls,pilotCls,byes};
+}
+
+function renderAdminAnalytics(state){
+  const{jugadores}=state;
+  const{cls,pilotCls,byes}=computeAnalytics(state);
+  let html=`<div class="divider"></div>
+  <div style="display:flex;align-items:baseline;gap:.8rem;margin-bottom:.4rem;">
+    <div class="s-title" style="font-size:1.4rem;">📊 ANALYTICS</div>
+    <span style="font-family:var(--mono);font-size:.65rem;color:var(--blue);letter-spacing:.12em;background:rgba(10,132,255,.1);border:1px solid rgba(10,132,255,.2);border-radius:4px;padding:.15rem .6rem;">SOLO ADMIN</span>
+  </div>
+  <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3);margin-bottom:1.5rem;letter-spacing:.04em;">Métricas operativas calculadas sobre todos los brackets.</div>`;
+
+  const activeClases=Object.entries(cls).filter(([,v])=>v.m>0);
+  if(activeClases.length){
+    html+=`<div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-bottom:.6rem;">RENDIMIENTO POR CLASE</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>CLASE</th><th>CARRERAS</th><th>DQ</th><th>TASA DQ</th><th>PROMEDIO</th><th>MÍNIMO</th><th>MÁXIMO</th></tr></thead>
+      <tbody>${activeClases.map(([k,cs])=>{
+        const dqPct=cs.slots>0?(cs.dq/cs.slots*100).toFixed(1):'—';
+        const avg=cs.times.length?(cs.times.reduce((a,b)=>a+b,0)/cs.times.length).toFixed(3):'—';
+        const minT=cs.times.length?Math.min(...cs.times).toFixed(3):'—';
+        const maxT=cs.times.length?Math.max(...cs.times).toFixed(3):'—';
+        const dn=parseFloat(dqPct);
+        const dc=isNaN(dn)?'var(--text2)':dn>20?'var(--red)':dn>10?'var(--accent)':'var(--green)';
+        return`<tr>
+          <td><span class="badge badge-clase">${TOPES[k]?.label||k}</span>${TOPES[k]?.tope?`<span style="font-family:var(--mono);font-size:.62rem;color:var(--text3);margin-left:.4rem;">≥${TOPES[k].tope}"</span>`:''}</td>
+          <td style="font-family:var(--mono);">${cs.m}</td>
+          <td style="font-family:var(--mono);color:var(--red);">${cs.dq}</td>
+          <td style="font-family:var(--mono);color:${dc};">${dqPct}%</td>
+          <td style="font-family:var(--mono);color:var(--accent);">${avg!=='—'?avg+'"':'—'}</td>
+          <td style="font-family:var(--mono);color:var(--green);">${minT!=='—'?minT+'"':'—'}</td>
+          <td style="font-family:var(--mono);color:var(--text2);">${maxT!=='—'?maxT+'"':'—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  } else {
+    html+=`<div class="helper" style="padding:.5rem 0;color:var(--text3);">Sin carreras completadas aún.</div>`;
+  }
+
+  const pilotsWithData=jugadores.filter(j=>Object.keys(pilotCls[j.id]||{}).length>0);
+  if(pilotsWithData.length){
+    const clasesUsadas=[...new Set(pilotsWithData.flatMap(j=>Object.keys(pilotCls[j.id]||{})))];
+    html+=`<div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-top:1.5rem;margin-bottom:.6rem;">WIN RATE POR CLASE — PILOTOS</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>PILOTO</th>${clasesUsadas.map(c=>`<th style="text-align:center;">${c}</th>`).join('')}</tr></thead>
+      <tbody>${pilotsWithData.map(j=>{
+        const cs=pilotCls[j.id]||{};
+        const cells=clasesUsadas.map(clase=>{
+          if(!cs[clase])return`<td style="color:var(--text3);text-align:center;">—</td>`;
+          const tot=cs[clase].v+cs[clase].d;
+          const pct=tot?cs[clase].v/tot*100:0;
+          const color=pct>=60?'var(--green)':pct>=40?'var(--accent)':'var(--red)';
+          const bg=pct>=60?'rgba(48,209,88,.1)':pct>=40?'rgba(255,214,10,.06)':'rgba(255,69,58,.08)';
+          return`<td style="font-family:var(--mono);background:${bg};text-align:center;padding:.4rem .6rem;">
+            <div style="color:${color};font-weight:700;">${pct.toFixed(0)}%</div>
+            <div style="font-size:.62rem;color:var(--text3);">${cs[clase].v}V ${cs[clase].d}D</div>
+          </td>`;
+        });
+        return`<tr><td><strong>${j.username}</strong>${j.isVIP?'<span class="badge-vip" style="margin-left:.3rem;">VIP</span>':''}</td>${cells.join('')}</tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  }
+
+  if(byes.length){
+    html+=`<div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);letter-spacing:.1em;margin-top:1.5rem;margin-bottom:.6rem;">AVANCES POR BYE</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>EVENTO</th><th>BYES</th><th>TOTAL MATCHES</th><th>% BYE</th></tr></thead>
+      <tbody>${byes.map(b=>`<tr>
+        <td>${b.nombre}</td>
+        <td style="font-family:var(--mono);color:var(--accent);">${b.byes}</td>
+        <td style="font-family:var(--mono);">${b.total}</td>
+        <td style="font-family:var(--mono);color:var(--text2);">${(b.byes/b.total*100).toFixed(0)}%</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+
+  return html;
+}
+
 // ═══ STATS ═══════════════════════════════════════════════════════
 function renderStats(){
   const state=load();
-  const{jugadores,torneos,llaves,changelog}=state;
+  const{jugadores,torneos,llaves}=state;
   const el=document.getElementById('stats-content');
   // Compute stats for all pilots
   const pilots=jugadores.map(j=>{
@@ -1400,17 +1878,6 @@ function renderStats(){
     ).join('')}
     </tbody></table></div>`;
   }
-  // Changelog
-  if(changelog&&changelog.length){
-    html+=`<div class="divider"></div><div class="s-title" style="font-size:1.4rem;margin-bottom:1rem;">📋 LOG DE CAMBIOS</div>
-    <div class="table-wrap" style="max-height:300px;overflow-y:auto;"><table><thead><tr><th>FECHA</th><th>TIPO</th><th>DESCRIPCIÓN</th></tr></thead><tbody>
-    ${changelog.slice(0,50).map(c=>
-      `<tr><td style="font-family:var(--mono);font-size:.75rem;color:var(--text2);white-space:nowrap;">${c.fecha}</td>
-      <td><span class="badge badge-clase">${c.tipo}</span></td>
-      <td style="font-size:.85rem;">${c.desc}</td></tr>`
-    ).join('')}
-    </tbody></table></div>`;
-  }
   el.innerHTML=html;
 }
 
@@ -1461,6 +1928,74 @@ function saveEditTorneo(){
   closeModal('modal-edit-torneo');
   renderTorneoDetail();
   toast('Torneo actualizado','ok');
+}
+
+// ═══ EDITAR INSCRIPCIÓN POST-BRACKET ════════════════════════════
+function openEditInscripcion(tid,pilotoId){
+  const state=load();
+  const t=state.torneos.find(x=>x.id===tid);if(!t)return;
+  const ins=getInscripcion(t,pilotoId);if(!ins)return;
+  const j=state.jugadores.find(x=>x.id===pilotoId);
+
+  document.getElementById('ei-tid').value=tid;
+  document.getElementById('ei-old-pid').value=pilotoId;
+  document.getElementById('ei-piloto-nombre').textContent=j?.username||pilotoId;
+  document.getElementById('ei-vehiculo').value=ins.vehiculo||'';
+
+  const claseEl=document.getElementById('ei-clase');
+  claseEl.innerHTML=CLASE_OPTS;
+  claseEl.value=ins.clase||'L1';
+
+  // Sección reemplazo: mostrar solo si hay bracket con matches pendientes
+  const hasPendingMatches=t.bracket?.rondas?.some(r=>r.some(m=>m.estado==='pendiente'&&(m.j1===pilotoId||m.j2===pilotoId)));
+  const replaceSection=document.getElementById('ei-replace-section');
+  replaceSection.style.display=hasPendingMatches?'':'none';
+
+  if(hasPendingMatches){
+    const alreadyIn=new Set((t.jugadores||[]).map(j=>typeof j==='object'?j.pilotoId:j));
+    const available=state.jugadores.filter(j=>!alreadyIn.has(j.id));
+    const newPidEl=document.getElementById('ei-new-pid');
+    newPidEl.innerHTML=`<option value="">— No reemplazar —</option>`+available.map(j=>`<option value="${j.id}">${j.username}${j.isVIP?' ⭐':''}</option>`).join('');
+  }
+
+  openModal('modal-edit-inscripcion');
+}
+
+function saveEditInscripcion(){
+  const tid=document.getElementById('ei-tid').value;
+  const oldPid=document.getElementById('ei-old-pid').value;
+  const vehiculo=document.getElementById('ei-vehiculo').value.trim();
+  const clase=document.getElementById('ei-clase').value;
+  const newPid=document.getElementById('ei-new-pid').value||'';
+  const state=load();
+  const tIdx=state.torneos.findIndex(x=>x.id===tid);if(tIdx<0)return;
+  const t=state.torneos[tIdx];
+  const jIdx=(t.jugadores||[]).findIndex(j=>(typeof j==='object'?j.pilotoId:j)===oldPid);
+  if(jIdx<0)return;
+
+  const targetPid=newPid||oldPid;
+  state.torneos[tIdx].jugadores[jIdx]=typeof t.jugadores[jIdx]==='object'
+    ?{...t.jugadores[jIdx],pilotoId:targetPid,vehiculo,clase}
+    :{pilotoId:targetPid,vehiculo,clase};
+
+  // Si hay reemplazo, actualizar matches pendientes del bracket
+  if(newPid&&t.bracket){
+    state.torneos[tIdx].bracket.rondas.forEach(r=>r.forEach(m=>{
+      if(m.estado==='completado'||m.estado==='bye')return;
+      if(m.j1===oldPid)m.j1=newPid;
+      if(m.j2===oldPid)m.j2=newPid;
+    }));
+  }
+
+  const oldNombre=load().jugadores.find(x=>x.id===oldPid)?.username||oldPid;
+  const newNombre=newPid?load().jugadores.find(x=>x.id===newPid)?.username||newPid:'';
+  const desc=newPid?`${oldNombre} reemplazado por ${newNombre} en "${t.nombre}"`:`Inscripción de ${oldNombre} editada en "${t.nombre}"`;
+  logChange('EDITAR',desc);
+  save(state);
+  closeModal('modal-edit-inscripcion');
+  renderTorneoDetail();
+  playChime();
+  toast(newPid?`✓ ${newNombre} reemplaza en el bracket`:'✓ Inscripción actualizada','ok');
 }
 
 // ═══ INSCRIPCIONES DE USUARIOS (Google) ═══════════════════════════
@@ -1514,6 +2049,9 @@ function openInscriptionRequest(tid){
   document.getElementById('ir-torneo-nombre').textContent=t.nombre;
   document.getElementById('ir-username').value='';
   document.getElementById('ir-vehiculo').value='';
+  // Poblar datalist con pilotos registrados
+  const dl=document.getElementById('pilotos-datalist');
+  if(dl){dl.innerHTML=load().jugadores.map(j=>`<option value="${j.username}">`).join('');}
   openModal('modal-inscripcion-req');
 }
 
@@ -1523,6 +2061,7 @@ function saveInscriptionRequest(){
   const vehiculo=document.getElementById('ir-vehiculo').value.trim();
   const clase=document.getElementById('ir-clase').value;
   if(!username){toast('Ingresá tu username de Roblox.','err');return;}
+  if(!vehiculo){toast('Ingresá el vehículo con el que correrás.','err');return;}
   const user=auth.currentUser;
   if(!user){toast('Debés estar logueado.','err');return;}
   // Doble verificación: duplicados y plazo
